@@ -23,8 +23,8 @@ public class LocationLogRepositoryImpl implements LocationLogRepository {
         jdbcTemplate.batchUpdate(sql, list, list.size(),
             (ps, argument) -> {
                 ps.setLong(1, argument.getDriverId());
-                ps.setDouble(2, argument.getLat());
-                ps.setDouble(3, argument.getLng());
+                ps.setBigDecimal(2, argument.getLat());
+                ps.setBigDecimal(3, argument.getLng());
                 ps.setLong(4, argument.getVehicleTypeId());
                 ps.setTimestamp(5, Timestamp.from(Instant.now()));
             });

@@ -49,6 +49,15 @@ services:
     networks:
       - trang-sm
 
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "8082:5000"
+    env_file:
+      - .env
+    networks:
+      - trang-sm
+
   # ─── Shared Infrastructure (uncomment as needed) ─
   db:
     image: postgres:16-alpine    # or mysql:8, mongo:7, etc.

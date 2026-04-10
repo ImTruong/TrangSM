@@ -20,6 +20,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.domain.geo.GeoReference;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -51,7 +52,7 @@ public class LocationServiceImpl implements LocationService {
 
             RedisGeoCommands.GeoLocation<byte[]> location = new RedisGeoCommands.GeoLocation<>(
                 member,
-                new Point(req.getLng(), req.getLat())
+                new Point(req.getLng().doubleValue(), req.getLat().doubleValue())
             );
 
 //            UPDATE TẤT CẢ
@@ -87,7 +88,7 @@ public class LocationServiceImpl implements LocationService {
         GeoResults<RedisGeoCommands.GeoLocation<String>> results =
             geoOps.search(
                 RedisKeys.GEO_AVAILABLE + req.getVehicleTypeId(),
-                GeoReference.fromCoordinate(req.getLng(), req.getLat()),
+                GeoReference.fromCoordinate(req.getLng().doubleValue(), req.getLat().doubleValue()),
                 new Distance(req.getRadiusKm(), Metrics.KILOMETERS),
                 RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs()
                     .includeCoordinates()
@@ -100,15 +101,14 @@ public class LocationServiceImpl implements LocationService {
         List<NearbyDriver> nearbyResponses = results.getContent().stream().map(
             r -> NearbyDriver.builder()
                 .driverId(Long.valueOf(r.getContent().getName().split(":")[0]))
-                .lng(r.getContent().getPoint().getX())
-                .lat(r.getContent().getPoint().getY())
+                .lng(BigDecimal.valueOf(r.getContent().getPoint().getX()))
+                .lat(BigDecimal.valueOf(r.getContent().getPoint().getY()))
                 .build()
         ).toList();
 
 //        VỚI MỖI TÀI XẾ, KIỂM TRA XEM CÓ AI ĐẶT CHƯA
         for (NearbyDriver n : nearbyResponses) {
             if (tryLockDriver(n, req.getRequestId())) {
-//                TODO: BĂN NOTI SANG CHO TÀI XẾ
                 return n;
             }
         }

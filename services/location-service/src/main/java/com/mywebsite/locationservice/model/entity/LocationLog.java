@@ -1,8 +1,10 @@
 package com.mywebsite.locationservice.model.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -11,25 +13,26 @@ import java.time.LocalDateTime;
 @Table(name = "location_log")
 @Getter
 @Setter
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class LocationLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    Long id;
 
     @Column(name = "driver_id")
-    private Integer driverId;
+    Integer driverId;
 
     @Column(precision = 10, scale = 8)
-    private BigDecimal lat;
+    BigDecimal lat;
 
     @Column(precision = 11, scale = 8)
-    private BigDecimal lng;
+    BigDecimal lng;
 
     @Column(name = "vehicle_type_id")
-    private Integer vehicleTypeId;
+    Integer vehicleTypeId;
 
     @Column(name = "timestamp", insertable = false, updatable = false,
         columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime timestamp;
+    LocalDateTime timestamp;
 }

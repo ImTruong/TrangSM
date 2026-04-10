@@ -3,6 +3,8 @@ package com.mywebsite.locationservice.model.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -11,6 +13,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class NearbyDriver {
     Long driverId;
-    Double lng;
-    Double lat;
+    BigDecimal lng;
+    BigDecimal lat;
 }

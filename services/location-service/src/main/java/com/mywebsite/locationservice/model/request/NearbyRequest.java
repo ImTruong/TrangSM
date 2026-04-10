@@ -3,6 +3,8 @@ package com.mywebsite.locationservice.model.request;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -12,7 +14,7 @@ public class NearbyRequest {
     Long requestId;
     Double radiusKm;
     Integer limit;
-    Double lng;
-    Double lat;
+    BigDecimal lng;
+    BigDecimal lat;
     Long vehicleTypeId;
 }

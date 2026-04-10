@@ -3,6 +3,8 @@ package com.mywebsite.locationservice.model.request;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -11,7 +13,7 @@ import lombok.experimental.FieldDefaults;
 public class LocationRequest {
     Long driverId;
     Long vehicleTypeId;
-    Double lng;
-    Double lat;
+    BigDecimal lng;
+    BigDecimal lat;
     String status;
 }
