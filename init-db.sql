@@ -1,0 +1,2 @@
+-- LOCATION-SERVICE
+CREATE DATABASE location_db;
