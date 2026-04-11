@@ -1,0 +1,72 @@
+# ============================================
+# Notification Service — OpenAPI 3.0 Specification
+# Port: 8088
+# ============================================
+openapi: 3.0.3
+info:
+  title: Notification Service API
+  description: |
+    Gửi thông báo thời gian thực qua WebSocket.
+    Utility Service — Pure Processing.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8088
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Kiểm tra trạng thái hoạt động của service
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service đang hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/v1/notifications:
+    post:
+      summary: Gửi thông báo đến người dùng
+      operationId: postNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationRequest'
+      responses:
+        '200':
+          description: Yêu cầu gửi thông báo đã được xử lý
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Notification processed"
+
+components:
+  schemas:
+    NotificationRequest:
+      type: object
+      required:
+        - recipientId
+        - title
+        - content
+      properties:
+        recipientId:
+          type: string
+          description: ID của người nhận (Khách hàng hoặc Tài xế)
+        title:
+          type: string
+        content:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+          description: Dữ liệu đính kèm (tripId, bookingId, v.v.)
