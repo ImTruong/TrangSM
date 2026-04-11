@@ -17,10 +17,6 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/health")
-    public ResponseEntity<String> getHealth() {
-        return new ResponseEntity<>("OK", HttpStatus.OK);
-    }
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserInfoById(

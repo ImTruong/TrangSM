@@ -33,8 +33,4 @@ public class LocationController {
         return new ResponseEntity<>(nearbyDriver, HttpStatus.OK);
     }
 
-    @GetMapping("/health")
-    public ResponseEntity<String> getHealth() {
-        return new ResponseEntity<>("OK", HttpStatus.OK);
-    }
 }

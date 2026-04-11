@@ -1,0 +1,83 @@
+# ============================================
+# User Service — OpenAPI 3.0 Specification
+# Port: 8082
+# ============================================
+openapi: 3.0.3
+info:
+  title: User Service API
+  description: |
+    Quản lý thông tin cá nhân của Khách hàng.
+    Entity Service — Agnostic Logic, tái dùng được ở mọi process.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8082
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Kiểm tra trạng thái hoạt động của service
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service đang hoạt động
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+  /api/v1/user/{id}:
+    get:
+      summary: Truy xuất thông tin cá nhân của Khách hàng theo ID
+      operationId: getUserInfoById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của Khách hàng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Trả về thông tin Khách hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: Không tìm thấy Khách hàng
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "User not found"
+        '500':
+          description: Lỗi máy chủ nội bộ
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Internal Server Error"
+
+components:
+  schemas:
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        fullName:
+          type: string
+          example: "Nguyen Van A"
+        phoneNumber:
+          type: string
+          example: "0901234567"
+        avatarUrl:
+          type: string
+          format: uri
+          example: "https://cdn.example.com/avatars/1.jpg"

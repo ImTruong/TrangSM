@@ -1,59 +1,66 @@
-# Service A
-
-> Rename this to match your actual service name (e.g., `user-service`, `order-service`).
+# User Service
 
 ## Overview
 
-Describe the responsibility of this service:
-- What business domain does it cover?
-- What data does it own?
-- What operations does it expose?
+User Service là một **Entity Service** chịu trách nhiệm quản lý thông tin cá nhân của Khách hàng trong hệ thống TrangSM. Service này cung cấp logic agnostic (không phụ thuộc quy trình cụ thể), cho phép tái sử dụng cho nhiều nghiệp vụ khác nhau như đặt xe, quản lý tài khoản, hoặc thông báo.
+
+### Trách nhiệm chính:
+- Quản lý thông tin hồ sơ khách hàng (Tên, Số điện thoại, Ảnh đại diện).
+- Cung cấp API truy xuất thông tin khách hàng cho các Task Service (như Booking Task).
 
 ## Tech Stack
 
 | Component  | Choice             |
 |------------|--------------------|
-| Language   | *(e.g., Python, Node.js, Java, Go, C#)* |
-| Framework  | *(e.g., FastAPI, Express, Spring Boot)*  |
-| Database   | *(e.g., PostgreSQL, MongoDB, MySQL)*     |
+| Language   | Java 21            |
+| Framework  | Spring Boot 3.4.x  |
+| Database   | PostgreSQL         |
+| Build Tool | Maven              |
 
 ## API Endpoints
 
-| Method | Endpoint      | Description          |
-|--------|---------------|----------------------|
-| GET    | `/health`     | Health check         |
-| ...    | ...           | ...                  |
+| Method | Endpoint             | Description                                  |
+|--------|----------------------|----------------------------------------------|
+| GET    | `/health`           | Kiểm tra trạng thái hoạt động của service    |
+| GET    | `/api/v1/user/{id}`  | Truy xuất thông tin cá nhân của Khách hàng   |
 
-> Full API specification: [`docs/api-specs/service-a.yaml`](../../docs/api-specs/service-a.yaml)
+> Full API specification: [`docs/api-specs/user-service.yaml`](../../docs/api-specs/user-service.yaml)
 
 ## Running Locally
 
+### Sử dụng Docker Compose (Khuyên dùng)
+Từ thư mục gốc của dự án:
 ```bash
-# From project root
-docker compose up service-a --build
-
-# Or run standalone (adapt to your stack)
-cd src/
-# npm install && npm start
-# pip install -r requirements.txt && uvicorn main:app
-# go run main.go
-# dotnet run
+docker compose up user-service --build
 ```
+Service sẽ chạy tại: `http://localhost:8082`
+
+### Chạy bằng Maven
+```bash
+cd services/user-service
+./mvnw spring-boot:run
+```
+Service sẽ chạy tại: `http://localhost:5000` (mặc định trong application.properties)
 
 ## Project Structure
 
 ```
-service-a/
-├── Dockerfile
-├── readme.md
-└── src/           # Your source code goes here
+user-service/
+├── Dockerfile          # Cấu hình container hóa (Multi-stage build)
+├── pom.xml             # Quản lý dependencies Maven
+├── readme.md           # Tài liệu hướng dẫn
+└── src/
+    ├── main/java/...   # Mã nguồn Spring Boot
+    └── main/resources/ # Cấu hình application.properties
 ```
 
 ## Environment Variables
 
-| Variable   | Description         | Default   |
-|------------|---------------------|-----------|
-| `DB_HOST`  | Database hostname   | localhost |
-| `DB_PORT`  | Database port       | 5432      |
+Cấu hình trong `.env` tại thư mục gốc hoặc `application.properties`:
 
-
+| Variable                 | Description                         | Default                                 |
+|--------------------------|-------------------------------------|-----------------------------------------|
+| `SPRING_DATASOURCE_URL`  | JDBC URL cho PostgreSQL             | `jdbc:postgresql://postgres-db:5432/user_db` |
+| `SPRING_DATASOURCE_USER` | Username DB                         | `postgres`                              |
+| `SPRING_DATASOURCE_PASS` | Password DB                         | `root`                                  |
+| `SERVER_PORT`            | Cổng chạy service (nội bộ container) | `5000`                                  |
