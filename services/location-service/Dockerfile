@@ -24,7 +24,7 @@ FROM eclipse-temurin:21-jre-alpine
 
 # Set metadata labels
 LABEL maintainer="University Microservices"
-LABEL description="User Service - Spring Boot microservice"
+LABEL description="Location Service - Spring Boot microservice"
 
 # Set working directory
 WORKDIR /app
@@ -33,7 +33,7 @@ WORKDIR /app
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 # Copy only the built JAR from builder stage
-COPY --from=builder /build/target/user-service-*.jar application.jar
+COPY --from=builder /build/target/location-service-*.jar application.jar
 
 # Change ownership to non-root user
 RUN chown appuser:appuser application.jar
