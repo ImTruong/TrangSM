@@ -1,0 +1,81 @@
+# ============================================
+# Driver Service — OpenAPI 3.0 Specification
+# Port: 8083
+# ============================================
+openapi: 3.0.3
+info:
+  title: Driver Service API
+  description: |
+    Quản lý thông tin hồ sơ và trạng thái tài xế.
+    Entity Service — Agnostic Logic.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8083
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Kiểm tra trạng thái hoạt động của service
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service đang hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/v1/drivers/{id}:
+    get:
+      summary: Lấy thông tin chi tiết một tài xế theo ID
+      operationId: getDriverById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverResponse'
+        '404':
+          description: Không tìm thấy tài xế
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Driver not found with id: 1"
+
+components:
+  schemas:
+    DriverResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        phone:
+          type: string
+        avatarUrl:
+          type: string
+        licenseNumber:
+          type: string
+        status:
+          type: string
+          enum: [AVAILABLE, ON_TRIP, OFFLINE]

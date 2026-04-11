@@ -43,7 +43,7 @@ services:
   location-service:
     build: ./services/location-service
     ports:
-      - "${LOCATION_SERVICE_PORT:-8081}:5000"
+      - "${LOCATION_SERVICE_PORT:-8087}:5000"
     env_file:
       - .env
     networks:
@@ -53,6 +53,15 @@ services:
     build: ./services/user-service
     ports:
       - "${USER_SERVICE_PORT:-8082}:5000"
+    env_file:
+      - .env
+    networks:
+      - trang-sm
+
+  driver-service:
+    build: ./services/driver-service
+    ports:
+      - "${DRIVER_SERVICE_PORT:-8083}:5000"
     env_file:
       - .env
     networks:
