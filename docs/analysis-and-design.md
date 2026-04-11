@@ -144,7 +144,120 @@ Based on Non-Functional Requirements (1.3) and Processing Requirements, identify
 
 Interaction diagram showing how Service Candidates collaborate to fulfill the business process.
 
-![Service Composition Candidate](asset/service%20composition%20candidate.png)
+![Service Composition Candidate]
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    actor Driver
+    participant GW as API Gateway
+
+    box rgba(173, 216, 230, 0.2) Internal Microservices Network
+        participant Auth as Auth (Keycloak)
+        participant Task as Booking Task
+        participant User as User Service
+        participant Vehicle as Vehicle Service
+        participant Payment as Payment Service
+        participant Location as Location Service
+        participant Trip as Trip Service
+        participant DriverEntity as Driver Service
+        participant Notify as Notification Service
+    end
+
+    %% --- AUTHENTICATION PHASE ---
+    Note over Client, Auth: 0. Giai đoạn Đăng nhập (Authentication)
+    Client->>GW: POST /auth/login (SĐT, Password)
+    GW->>Auth: Forward request
+    Auth-->>GW: Trả về JWT Access Token
+    GW-->>Client: JWT Token
+    
+    Driver->>GW: POST /auth/login (SĐT, Password)
+    GW->>Auth: Forward request
+    Auth-->>GW: Trả về JWT Access Token
+    GW-->>Driver: JWT Token
+
+    %% --- PRE-BOOKING PHASE ---
+    Note over Client, Vehicle: 1. Giai đoạn chuẩn bị (Pre-booking)
+    Client->>GW: GET /bookings/estimate (Điểm đi/đến)
+    activate Task
+    GW->>Task: Forward request
+    Task->>Task: Tự tính khoảng cách chim bay (A -> B)
+    Task->>Vehicle: GET /vehicle-types (Lấy danh sách đơn giá)
+    Vehicle-->>Task: Danh sách loại xe & Tiền/km
+    Task->>Task: Tổng tiền = Khoảng cách * Tiền/km (cho từng loại)
+    Task-->>GW: Trả về: List {Loại xe, Giá tiền/km, Tổng giá, Khoảng cách}
+    deactivate Task
+    GW-->>Client: Hiển thị danh sách giá cho Khách hàng chọn
+
+    Client->>GW: GET /payments/methods
+    GW->>Payment: Route request
+    Payment-->>GW: Trả về các phương thức thanh toán
+    GW-->>Client: Trả về các phương thức thanh toán
+
+    %% --- BOOKING INITIATION ---
+    Note over Client, Notify: 2. Giai đoạn Khách hàng đặt xe
+    Client->>GW: POST /bookings (Điểm đón/trả, Tiền, Loại xe, Payment)
+    GW->>Task: Validate Token & Route request
+    activate Task
+    
+    Task->>Payment: POST /payments (Tạo giao dịch Pending)
+    Payment-->>Task: Trả về Payment ID
+    
+    Task->>Trip: POST /trips (Tạo bản ghi Trip - PENDING kèm Payment ID)
+    Trip-->>Task: Trả về Trip ID
+    
+    Task->>Location: GET /locations/nearby (Tìm Driver gần nhất & Lock tạm)
+    Location-->>Task: Trả về Driver ID
+    
+    Task->>Notify: Push notification "Có cuốc mới" đến Driver ID
+    Notify-->>Driver: (Nhận thông báo Pop-up)
+    
+    Task-->>GW: 202 Accepted (Đang chờ tài xế xác nhận)
+    deactivate Task
+    GW-->>Client: 202 Accepted
+
+    %% --- DRIVER ACCEPTANCE ---
+    Note over Driver, Notify: 3. Giai đoạn Tài xế nhận cuốc
+    Driver->>GW: POST /bookings/{id}/accept
+    GW->>Task: Validate Token & Route request
+    activate Task
+    
+    Task->>Trip: PATCH /trips/{id} (status=ACCEPTED, driverId=...)
+    Task->>DriverEntity: PATCH /drivers/{id}/status (status=ON_TRIP)
+    
+    Note right of Task: Task gọi User Service để lấy info khách cho tài xế
+    Task->>User: GET /users/{customerId}
+    User-->>Task: Trả về tên, SĐT khách hàng, ảnh đại diện
+    
+    Task->>Notify: Push notification "Đã có tài xế" đến Client
+    Notify-->>Client: (Nhận thông báo hiển thị xe đang đến kèm thông tin chuyến và tài xế)
+    
+    Task-->>GW: 200 OK (Kèm TOÀN BỘ thông tin Trip & Khách hàng)
+    deactivate Task
+    GW-->>Driver: 200 OK (Hiển thị UI cho tài xế)
+
+    %% --- TRIP EXECUTION ---
+    Note over Driver, Trip: 4. Giai đoạn Đón khách và Di chuyển
+    Driver->>GW: POST /bookings/{id}/start
+    GW->>Task: Validate Token & Route request
+    activate Task
+    Task->>Trip: PATCH /trips/{id} (status=STARTED, started_at=now)
+    Task-->>GW: 200 OK
+    deactivate Task
+    GW-->>Driver: 200 OK
+
+    %% --- TRIP COMPLETION ---
+    Note over Driver, DriverEntity: 5. Giai đoạn Hoàn thành chuyến đi
+    Driver->>GW: POST /bookings/{id}/complete
+    GW->>Task: Validate Token & Route request
+    activate Task
+    Task->>Trip: PATCH /trips/{id} (status=COMPLETED, completed_at=now)
+    Task->>DriverEntity: PATCH /drivers/{id}/status (status=AVAILABLE)
+    Task-->>GW: 200 OK
+    deactivate Task
+    GW-->>Driver: 200 OK (Chuyến đi kết thúc)
+```
 
 ---
 
