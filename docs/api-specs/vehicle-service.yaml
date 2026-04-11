@@ -1,0 +1,104 @@
+# ============================================
+# Vehicle Service — OpenAPI 3.0 Specification
+# Port: 8084
+# ============================================
+openapi: 3.0.3
+info:
+  title: Vehicle Service API
+  description: |
+    Quản lý thông tin về loại xe và phương tiện.
+    Entity Service — Agnostic Logic.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8084
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Kiểm tra trạng thái hoạt động của service
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service đang hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/v1/vehicle-types:
+    get:
+      summary: Lấy danh sách tất cả các loại xe
+      operationId: getAllVehicleTypes
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VehicleTypeResponse'
+
+  /api/v1/vehicles/{id}:
+    get:
+      summary: Lấy thông tin chi tiết một xe theo ID
+      operationId: getVehicleById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponse'
+        '404':
+          description: Không tìm thấy xe
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Vehicle not found with id: 1"
+
+components:
+  schemas:
+    VehicleTypeResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        numberOfSeat:
+          type: integer
+        pricePerKm:
+          type: number
+          format: double
+
+    VehicleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        plate:
+          type: string
+        color:
+          type: string
+        ownerId:
+          type: integer
+          format: int64
+        vehicleType:
+          $ref: '#/components/schemas/VehicleTypeResponse'

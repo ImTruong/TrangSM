@@ -1,3 +1,4 @@
 -- LOCATION-SERVICE
 CREATE DATABASE location_db;
 CREATE DATABASE user_db;
+CREATE DATABASE vehicle_db;

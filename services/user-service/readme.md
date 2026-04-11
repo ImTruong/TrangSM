@@ -35,12 +35,7 @@ docker compose up user-service --build
 ```
 Service sẽ chạy tại: `http://localhost:8082`
 
-### Chạy bằng Maven
-```bash
-cd services/user-service
-./mvnw spring-boot:run
-```
-Service sẽ chạy tại: `http://localhost:5000` (mặc định trong application.properties)
+
 
 ## Project Structure
 

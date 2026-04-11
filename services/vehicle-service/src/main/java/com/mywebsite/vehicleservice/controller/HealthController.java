@@ -1,4 +1,4 @@
-package com.mywebsite.userservice.controller;
+package com.mywebsite.vehicleservice.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
