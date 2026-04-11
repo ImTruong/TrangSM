@@ -1,17 +1,17 @@
 # ============================================
-# Service A — OpenAPI 3.0 Specification
-# Docs: https://swagger.io/specification/
+# User Service — OpenAPI 3.0 Specification
+# Port: 8082
 # ============================================
 openapi: 3.0.3
 info:
-  title: Service A API
+  title: User Service API
   description: |
-    API specification for Service A.
-    Replace with your actual service name and description.
+    Quản lý thông tin cá nhân của Khách hàng.
+    Entity Service — Agnostic Logic, tái dùng được ở mọi process.
   version: 1.0.0
 
 servers:
-  - url: http://localhost:5001
+  - url: http://localhost:8082
     description: Local development
 
 paths:
@@ -31,50 +31,72 @@ paths:
                     type: string
                     example: ok
 
-  # Add your endpoints below
-  # /items:
-  #   get:
-  #     summary: List all items
-  #     operationId: listItems
-  #     responses:
-  #       '200':
-  #         description: A list of items
-  #         content:
-  #           application/json:
-  #             schema:
-  #               type: array
-  #               items:
-  #                 $ref: '#/components/schemas/Item'
-  #   post:
-  #     summary: Create a new item
-  #     operationId: createItem
-  #     requestBody:
-  #       required: true
-  #       content:
-  #         application/json:
-  #           schema:
-  #             $ref: '#/components/schemas/ItemCreate'
-  #     responses:
-  #       '201':
-  #         description: Item created
+  /users/{id}:
+    get:
+      summary: Truy xuất thông tin cá nhân của Khách hàng
+      operationId: getUserById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của Khách hàng
+      responses:
+        '200':
+          description: Trả về thông tin Khách hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: ID không đúng định dạng UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy Khách hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
-  schemas: {}
-    # Item:
-    #   type: object
-    #   properties:
-    #     id:
-    #       type: string
-    #       format: uuid
-    #     name:
-    #       type: string
-    #     createdAt:
-    #       type: string
-    #       format: date-time
-    # ItemCreate:
-    #   type: object
-    #   required:
-    #     - name
-    #   properties:
-    #     name:
-    #       type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        fullName:
+          type: string
+          example: "Nguyen Van A"
+        phone:
+          type: string
+          example: "0901234567"
+        avatarUrl:
+          type: string
+          format: uri
+          example: "https://cdn.example.com/avatars/a1b2c3d4.jpg"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Not Found"
+        message:
+          type: string
+          example: "User not found"
