@@ -43,7 +43,7 @@ services:
   location-service:
     build: ./services/location-service
     ports:
-      - "8081:5000"
+      - "${LOCATION_SERVICE_PORT:-8087}:5000"
     env_file:
       - .env
     networks:
@@ -52,7 +52,43 @@ services:
   user-service:
     build: ./services/user-service
     ports:
-      - "8082:5000"
+      - "${USER_SERVICE_PORT:-8082}:5000"
+    env_file:
+      - .env
+    networks:
+      - trang-sm
+
+  driver-service:
+    build: ./services/driver-service
+    ports:
+      - "${DRIVER_SERVICE_PORT:-8083}:5000"
+    env_file:
+      - .env
+    networks:
+      - trang-sm
+
+  vehicle-service:
+    build: ./services/vehicle-service
+    ports:
+      - "${VEHICLE_SERVICE_PORT:-8084}:5000"
+    env_file:
+      - .env
+    networks:
+      - trang-sm
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT:-8088}:5000"
+    env_file:
+      - .env
+    networks:
+      - trang-sm
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "8180:5000"
     env_file:
       - .env
     networks:
@@ -66,8 +102,8 @@ services:
       - "${DB_PORT:-5432}:5432"
     environment:
       #       POSTGRES_DB: ${DB_NAME:-mydb}
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -115,12 +151,34 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "8080:8080"
+      - "8002:8080"
     depends_on:
       - kafka
     environment:
       - KAFKA_CLUSTERS_0_NAME=local-cluster
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-server:29092
+    networks:
+      - trang-sm
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: keycloak-server
+    command:
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./realm-export.json:/opt/keycloak/data/import/realm.json:ro
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-db:5432/keycloak_db
+      KC_DB_USERNAME: ${DB_USER:-postgres}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-root}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "8003:8080"
     networks:
       - trang-sm
 
