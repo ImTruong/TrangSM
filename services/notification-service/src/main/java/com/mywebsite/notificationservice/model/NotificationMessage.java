@@ -15,4 +15,5 @@ public class NotificationMessage {
     String title;
     String content;
     Map<String, Object> data;
+    String eventId;
 }

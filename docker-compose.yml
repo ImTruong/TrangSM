@@ -12,7 +12,6 @@ services:
   #      - gateway
   #    networks:
   #      - app-network
-
   # ─── API Gateway ─────────────────────────────────
   gateway:
     build: ./gateway
@@ -27,21 +26,6 @@ services:
       - vehicle-service
     networks:
       - trang-sm
-
-  # ─── Service A ───────────────────────────────────
-  #  service-a:
-  #    build: ./services/service-a
-  #    ports:
-  #      - "${SERVICE_A_PORT:-5001}:5000"
-  #    env_file:
-  #      - .env
-  #    networks:
-  #      - app-network
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
 
   # ─── Location Service ───────────────────────────────────
   location-service:
@@ -98,14 +82,54 @@ services:
     networks:
       - trang-sm
 
+  trip-service:
+    build: ./services/trip-service
+    ports:
+      - "${TRIP_SERVICE_PORT:-8085}:5000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - kafka
+    networks:
+      - trang-sm
+
+  payment-service:
+    build: ./services/payment-service
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-8086}:5000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - kafka
+    networks:
+      - trang-sm
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  booking-service:
+    build: ./services/booking-service
+    ports:
+      - "${BOOKING_SERVICE_PORT:-8081}:5000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - kafka
+    networks:
+      - trang-sm
+
   # ─── Shared Infrastructure (uncomment as needed) ─
   db:
-    image: postgres:16-alpine    # or mysql:8, mongo:7, etc.
+    image: postgres:16-alpine
     container_name: postgres-db
     ports:
       - "${DB_PORT:-5432}:5432"
     environment:
-      #       POSTGRES_DB: ${DB_NAME:-mydb}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
     volumes:
@@ -140,7 +164,6 @@ services:
     environment:
       - KAFKA_NODE_ID=1
       - KAFKA_PROCESS_ROLES=broker,controller
-      # Listener nội bộ dùng cổng 29092, Listener cho máy thật dùng cổng 9092
       - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,DOCKER://:29092
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,DOCKER://kafka-server:29092
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,DOCKER:PLAINTEXT

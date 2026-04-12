@@ -1,0 +1,128 @@
+# ============================================
+# Trip Service — OpenAPI 3.0 Specification
+# Port: 8085
+# ============================================
+openapi: 3.0.3
+info:
+  title: Trip Service API
+  description: |
+    Quản lý vòng đời chuyến đi (Trip Lifecycle).
+    Entity Service — Agnostic Logic.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8085
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Kiểm tra trạng thái hoạt động của service
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service đang hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /trips/{id}:
+    get:
+      summary: Lấy thông tin chi tiết một chuyến đi theo ID
+      operationId: getTripById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripResponse'
+        '404':
+          description: Không tìm thấy chuyến đi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Trip not found with id: 1"
+
+components:
+  schemas:
+    TripResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        customerId:
+          type: integer
+          format: int64
+        customerNameSnapshot:
+          type: string
+        customerPhoneSnapshot:
+          type: string
+        driverId:
+          type: integer
+          format: int64
+        driverNameSnapshot:
+          type: string
+        driverPhoneSnapshot:
+          type: string
+        vehiclePlateSnapshot:
+          type: string
+        vehicleTypeNameSnapshot:
+          type: string
+        vehicleSeatSnapshot:
+          type: integer
+        vehiclePriceSnapshot:
+          type: number
+          format: double
+        pickUpLongitude:
+          type: number
+          format: double
+        pickUpLatitude:
+          type: number
+          format: double
+        dropOffLongitude:
+          type: number
+          format: double
+        dropOffLatitude:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [PENDING, FINDING_DRIVER, ACCEPTED, STARTED, COMPLETED, CANCELLED]
+        price:
+          type: number
+          format: double
+        cancelReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        acceptedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        cancelAt:
+          type: string
+          format: date-time
