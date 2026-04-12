@@ -13,4 +13,5 @@ import lombok.experimental.FieldDefaults;
 public class DriverStatusChangeEvent {
     Long driverId;
     DriverStatus newStatus;
+    String eventId;
 }

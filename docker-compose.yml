@@ -85,6 +85,35 @@ services:
     networks:
       - trang-sm
 
+  trip-service:
+    build: ./services/trip-service
+    ports:
+      - "${TRIP_SERVICE_PORT:-8085}:5000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - kafka
+    networks:
+      - trang-sm
+
+  payment-service:
+    build: ./services/payment-service
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-8086}:5000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - kafka
+    networks:
+      - trang-sm
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # ─── Shared Infrastructure (uncomment as needed) ─
   db:
     image: postgres:16-alpine    # or mysql:8, mongo:7, etc.

@@ -1,0 +1,78 @@
+openapi: 3.0.3
+info:
+  title: Payment Service API
+  description: API quản lý giao dịch thanh toán và tích hợp Stripe cho hệ thống TrangSM.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8086
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Kiểm tra trạng thái hoạt động của service.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /payments/webhook:
+    post:
+      summary: Stripe Webhook Endpoint
+      description: Tiếp nhận các sự kiện từ Stripe (checkout.session.completed, etc.) để cập nhật trạng thái giao dịch.
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Chữ ký số từ Stripe để xác thực request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Event received and processed.
+        '400':
+          description: Invalid signature or payload.
+
+components:
+  schemas:
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+        tripId:
+          type: string
+        method:
+          type: string
+          enum: [CASH, ONLINE]
+        status:
+          type: string
+          enum: [PENDING, PAID, FAILED, COMPLETED]
+        amount:
+          type: number
+        currency:
+          type: string
+        stripeSessionId:
+          type: string
+        stripePaymentIntentId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
