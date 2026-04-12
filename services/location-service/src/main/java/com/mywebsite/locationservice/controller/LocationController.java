@@ -1,13 +1,14 @@
 package com.mywebsite.locationservice.controller;
 
 import com.mywebsite.locationservice.model.request.LocationRequest;
-import com.mywebsite.locationservice.model.request.NearbyRequest;
 import com.mywebsite.locationservice.model.response.NearbyDriver;
 import com.mywebsite.locationservice.service.LocationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequiredArgsConstructor
@@ -29,9 +30,13 @@ public class LocationController {
 
     @GetMapping("/nearby")
     public ResponseEntity<NearbyDriver> getClosestDriver(
-        @RequestBody NearbyRequest req
-    ) {
-        NearbyDriver nearbyDriver = locationService.getClosestDriver(req);
+        @RequestParam Long requestId,
+        @RequestParam Double radiusKm,
+        @RequestParam BigDecimal lng,
+        @RequestParam BigDecimal lat,
+        @RequestParam Long vehicleTypeId
+        ) {
+        NearbyDriver nearbyDriver = locationService.getClosestDriver(requestId, radiusKm, lng, lat, vehicleTypeId);
         if (nearbyDriver == null) return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 
         return new ResponseEntity<>(nearbyDriver, HttpStatus.OK);

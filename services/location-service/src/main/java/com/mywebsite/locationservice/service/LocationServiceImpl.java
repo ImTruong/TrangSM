@@ -4,7 +4,6 @@ import com.mywebsite.locationservice.buffer.LocationBuffer;
 import com.mywebsite.locationservice.constant.RedisKeys;
 import com.mywebsite.locationservice.model.event.DriverAcceptedEvent;
 import com.mywebsite.locationservice.model.request.LocationRequest;
-import com.mywebsite.locationservice.model.request.NearbyRequest;
 import com.mywebsite.locationservice.model.response.NearbyDriver;
 import com.mywebsite.locationservice.worker.LocationFlushWorker;
 import lombok.RequiredArgsConstructor;
@@ -81,19 +80,27 @@ public class LocationServiceImpl implements LocationService {
     }
 
     @Override
-    public NearbyDriver getClosestDriver(NearbyRequest req) {
+    public void handleDriverAccepted(DriverAcceptedEvent event) {
+        String geoAvailableKey = RedisKeys.GEO_AVAILABLE + event.getVehicleTypeId();
+        String member = event.getDriverId() + ":" + event.getVehicleTypeId();
+        redisTemplate.opsForZSet().remove(geoAvailableKey, member);
+        System.out.println(event.getDriverId() + ":" + event.getVehicleTypeId());
+    }
+
+    @Override
+    public NearbyDriver getClosestDriver(Long requestId, Double radiusKm, BigDecimal lng, BigDecimal lat, Long vehicleTypeId) {
         GeoOperations<String, String> geoOps = redisTemplate.opsForGeo();
 
 //        GEOSEARCH TÌM DANH SÁCH NHỮNG TÀI XẾ Ở GẦN
         GeoResults<RedisGeoCommands.GeoLocation<String>> results =
             geoOps.search(
-                RedisKeys.GEO_AVAILABLE + req.getVehicleTypeId(),
-                GeoReference.fromCoordinate(req.getLng().doubleValue(), req.getLat().doubleValue()),
-                new Distance(req.getRadiusKm(), Metrics.KILOMETERS),
+                RedisKeys.GEO_AVAILABLE + vehicleTypeId,
+                GeoReference.fromCoordinate(lng.doubleValue(), lat.doubleValue()),
+                new Distance(radiusKm, Metrics.KILOMETERS),
                 RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs()
                     .includeCoordinates()
                     .sortAscending()
-                    .limit(req.getLimit())
+                    .limit(10)
             );
 
         if (results == null) return null;
@@ -108,20 +115,12 @@ public class LocationServiceImpl implements LocationService {
 
 //        VỚI MỖI TÀI XẾ, KIỂM TRA XEM CÓ AI ĐẶT CHƯA
         for (NearbyDriver n : nearbyResponses) {
-            if (tryLockDriver(n, req.getRequestId())) {
+            if (tryLockDriver(n, requestId)) {
                 return n;
             }
         }
 
         return null;
-    }
-
-    @Override
-    public void handleDriverAccepted(DriverAcceptedEvent event) {
-        String geoAvailableKey = RedisKeys.GEO_AVAILABLE + event.getVehicleTypeId();
-        String member = event.getDriverId() + ":" + event.getVehicleTypeId();
-        redisTemplate.opsForZSet().remove(geoAvailableKey, member);
-        System.out.println(event.getDriverId() + ":" + event.getVehicleTypeId());
     }
 
     public boolean tryLockDriver(NearbyDriver driver, Long requestId) {
