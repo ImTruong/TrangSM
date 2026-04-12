@@ -17,8 +17,12 @@ public class LocationController {
 
     @PostMapping("/update")
     public ResponseEntity<String> updateLocation(
-        @RequestBody LocationRequest req
+        @RequestBody LocationRequest req,
+        @RequestHeader("X-User-Id") String userId,
+        @RequestHeader("X-User-Name") String phone,
+        @RequestHeader("X-User-Roles") String roles
     ) {
+        System.out.println("Received location update from userId=" + userId + ", phone=" + phone + ", roles=" + roles);
         locationService.updateLocation(req);
         return new ResponseEntity<>("OK", HttpStatus.CREATED);
     }
@@ -32,5 +36,4 @@ public class LocationController {
 
         return new ResponseEntity<>(nearbyDriver, HttpStatus.OK);
     }
-
 }

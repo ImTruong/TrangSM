@@ -14,15 +14,19 @@ services:
   #      - app-network
 
   # ─── API Gateway ─────────────────────────────────
-  #  gateway:
-  #    build: ./gateway
-  #    ports:
-  #      - "${GATEWAY_PORT:-8080}:8000"
-  #    depends_on:
-  #      - service-a
-  #      - service-b
-  #    networks:
-  #      - app-network
+  gateway:
+    build: ./gateway
+    ports:
+      - "${GATEWAY_PORT:-8080}:8000"
+    depends_on:
+      - location-service
+      - auth-service
+      - driver-service
+      - notification-service
+      - user-service
+      - vehicle-service
+    networks:
+      - trang-sm
 
   # ─── Service A ───────────────────────────────────
   #  service-a:
@@ -151,7 +155,7 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "8080:8080"
+      - "8002:8080"
     depends_on:
       - kafka
     environment:
