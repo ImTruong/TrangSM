@@ -7,4 +7,5 @@ import java.util.List;
 public interface VehicleService {
     List<VehicleTypeResponse> getAllVehicleTypes();
     VehicleResponse getVehicleById(Long id);
+    VehicleResponse getVehicleByOwnerId(Long ownerId);
 }

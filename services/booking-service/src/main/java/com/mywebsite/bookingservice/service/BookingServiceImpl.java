@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Service
@@ -47,19 +48,18 @@ public class BookingServiceImpl implements BookingService {
         VehicleTypeResponse vehicleType = getVehicleType(request.getVehicleTypeId());
 
         double distanceKm = haversine(
-            request.getPickUpLatitude(), request.getPickUpLongitude(),
-            request.getDropOffLatitude(), request.getDropOffLongitude()
-        );
+                request.getPickUpLatitude(), request.getPickUpLongitude(),
+                request.getDropOffLatitude(), request.getDropOffLongitude());
         BigDecimal pricePerKm = BigDecimal.valueOf(vehicleType.getPricePerKm());
         BigDecimal estimated = pricePerKm.multiply(BigDecimal.valueOf(distanceKm)).setScale(2, RoundingMode.HALF_UP);
 
         return EstimateResponse.builder()
-            .vehicleTypeId(vehicleType.getId())
-            .vehicleTypeName(vehicleType.getName())
-            .distanceKm(distanceKm)
-            .pricePerKm(pricePerKm)
-            .estimatedAmount(estimated)
-            .build();
+                .vehicleTypeId(vehicleType.getId())
+                .vehicleTypeName(vehicleType.getName())
+                .distanceKm(distanceKm)
+                .pricePerKm(pricePerKm)
+                .estimatedAmount(estimated)
+                .build();
     }
 
     @Override
@@ -71,12 +71,12 @@ public class BookingServiceImpl implements BookingService {
         }
 
         EstimateResponse estimate = estimate(EstimateRequest.builder()
-            .pickUpLongitude(request.getPickUpLongitude())
-            .pickUpLatitude(request.getPickUpLatitude())
-            .dropOffLongitude(request.getDropOffLongitude())
-            .dropOffLatitude(request.getDropOffLatitude())
-            .vehicleTypeId(request.getVehicleTypeId())
-            .build());
+                .pickUpLongitude(request.getPickUpLongitude())
+                .pickUpLatitude(request.getPickUpLatitude())
+                .dropOffLongitude(request.getDropOffLongitude())
+                .dropOffLatitude(request.getDropOffLatitude())
+                .vehicleTypeId(request.getVehicleTypeId())
+                .build());
 
         UserResponse user = getUser(userId);
         VehicleTypeResponse vehicleType = getVehicleType(request.getVehicleTypeId());
@@ -85,59 +85,63 @@ public class BookingServiceImpl implements BookingService {
         Long tripId = randomPositiveLong();
 
         Booking booking = Booking.builder()
-            .id(tripId)
-            .tripId(tripId)
-            .customerId(userId)
-            .vehicleTypeId(vehicleType.getId())
-            .pickUpLongitude(request.getPickUpLongitude())
-            .pickUpLatitude(request.getPickUpLatitude())
-            .dropOffLongitude(request.getDropOffLongitude())
-            .dropOffLatitude(request.getDropOffLatitude())
-            .paymentMethod(method)
-            .paymentStatus("PENDING")
-            .status(method == PaymentMethod.CASH ? BookingStatus.FINDING_DRIVER : BookingStatus.PENDING_PAYMENT)
-            .price(estimate.getEstimatedAmount())
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now())
-            .build();
+                .id(tripId)
+                .tripId(tripId)
+                .customerId(userId)
+                .vehicleTypeId(vehicleType.getId())
+                .pickUpLongitude(request.getPickUpLongitude())
+                .pickUpLatitude(request.getPickUpLatitude())
+                .dropOffLongitude(request.getDropOffLongitude())
+                .dropOffLatitude(request.getDropOffLatitude())
+                .paymentMethod(method)
+                .paymentStatus("PENDING")
+                .status(method == PaymentMethod.CASH ? BookingStatus.FINDING_DRIVER : BookingStatus.PENDING_PAYMENT)
+                .price(estimate.getEstimatedAmount())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
         bookingRepository.save(booking);
 
         TripRequestEvent tripEvent = TripRequestEvent.builder()
-            .tripId(tripId)
-            .customerId(userId)
-            .customerName(user.getFullName())
-            .customerPhone(user.getPhoneNumber())
-            .pickUpLongitude(request.getPickUpLongitude())
-            .pickUpLatitude(request.getPickUpLatitude())
-            .dropOffLongitude(request.getDropOffLongitude())
-            .dropOffLatitude(request.getDropOffLatitude())
-            .price(estimate.getEstimatedAmount())
-            .vehiclePlate("N/A")
-            .vehicleTypeName(vehicleType.getName())
-            .vehicleSeat(vehicleType.getNumberOfSeat())
-            .vehiclePrice(BigDecimal.valueOf(vehicleType.getPricePerKm()))
-            .build();
+                .tripId(tripId)
+                .customerId(userId)
+                .customerName(user.getFullName())
+                .customerPhone(user.getPhoneNumber())
+                .pickUpLongitude(request.getPickUpLongitude())
+                .pickUpLatitude(request.getPickUpLatitude())
+                .dropOffLongitude(request.getDropOffLongitude())
+                .dropOffLatitude(request.getDropOffLatitude())
+                .price(estimate.getEstimatedAmount())
+                .vehiclePlate("N/A")
+                .vehicleTypeName(vehicleType.getName())
+                .vehicleSeat(vehicleType.getNumberOfSeat())
+                .vehiclePrice(BigDecimal.valueOf(vehicleType.getPricePerKm()))
+                .build();
         outboxService.saveEvent(tripId.toString(), "BOOKING", "trip-request-topic", tripEvent);
 
         PaymentRequestEvent paymentEvent = PaymentRequestEvent.builder()
-            .customerId(userId)
-            .tripId(tripId)
-            .amount(estimate.getEstimatedAmount())
-            .currency("USD")
-            .method(method.name())
-            .build();
+                .customerId(userId)
+                .tripId(tripId)
+                .amount(estimate.getEstimatedAmount())
+                .currency("USD")
+                .method(method.name())
+                .build();
         outboxService.saveEvent(tripId.toString(), "BOOKING", "create-payment-topic", paymentEvent);
 
-        if (method == PaymentMethod.CASH) {
-            publishPaymentSuccessEvent(tripId, "CASH");
+        String checkoutUrl = null;
+        if (method == PaymentMethod.ONLINE) {
+            checkoutUrl = waitForCheckoutUrl(tripId, 12000);
+        } else if (method == PaymentMethod.CASH) {
+            findDriverAndNotify(booking);
         }
 
         return CreateBookingResponse.builder()
-            .bookingId(booking.getId())
-            .tripId(booking.getTripId())
-            .status(booking.getStatus().name())
-            .paymentStatus(booking.getPaymentStatus())
-            .build();
+                .bookingId(booking.getId())
+                .tripId(booking.getTripId())
+                .status(booking.getStatus().name())
+                .paymentStatus(booking.getPaymentStatus())
+                .checkoutUrl(checkoutUrl)
+                .build();
     }
 
     @Override
@@ -145,36 +149,43 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponse acceptBooking(Long bookingId, DriverActionRequest request, Long userId, String roles) {
         requireRole(roles, "DRIVER");
         Booking booking = findBookingById(bookingId);
-        DriverResponse driver = getDriver(request.getDriverId());
+        Long driverId = resolveDriverId(request, userId);
+        DriverResponse driver = getDriver(driverId);
+        if (driver == null || driver.getId() == null) {
+            throw new IllegalArgumentException("Driver not found");
+        }
+        VehicleResponse driverVehicle = getVehicleByOwnerId(driver.getId());
+        if (driverVehicle == null || driverVehicle.getVehicleType() == null) {
+            throw new IllegalArgumentException("Driver vehicle not found");
+        }
 
         booking.setDriverId(driver.getId());
         booking.setUpdatedAt(LocalDateTime.now());
         bookingRepository.save(booking);
 
         DriverAcceptedEvent acceptedEvent = DriverAcceptedEvent.builder()
-            .tripId(booking.getTripId())
-            .driverId(driver.getId())
-            .driverName(driver.getName())
-            .driverPhone(driver.getPhone())
-            .vehiclePlate("N/A")
-            .vehicleTypeName("N/A")
-            .vehicleSeat(0)
-            .vehiclePrice(booking.getPrice())
-            .build();
+                .tripId(booking.getTripId())
+                .driverId(driver.getId())
+                .driverName(driver.getName())
+                .driverPhone(driver.getPhone())
+                .vehiclePlate(driverVehicle.getPlate())
+                .vehicleTypeName(driverVehicle.getVehicleType().getName())
+                .vehicleSeat(driverVehicle.getVehicleType().getNumberOfSeat())
+                .vehiclePrice(BigDecimal.valueOf(driverVehicle.getVehicleType().getPricePerKm()))
+                .build();
         outboxService.saveEvent(booking.getId().toString(), "BOOKING", "driver-accepted-topic", acceptedEvent);
 
         LocationDriverAcceptedEvent locationEvent = LocationDriverAcceptedEvent.builder()
-            .driverId(driver.getId())
-            .vehicleTypeId(booking.getVehicleTypeId())
-            .build();
+                .driverId(driver.getId())
+                .vehicleTypeId(booking.getVehicleTypeId())
+                .build();
         outboxService.saveEvent(booking.getId().toString(), "BOOKING", "driver.accepted", locationEvent);
 
         sendNotification(
-            booking.getCustomerId().toString(),
-            "Da co tai xe",
-            "Tai xe " + driver.getName() + " da nhan cuoc",
-            Map.of("tripId", booking.getTripId(), "driver", driver, "paymentStatus", booking.getPaymentStatus())
-        );
+                booking.getCustomerId().toString(),
+                "Da co tai xe",
+                "Tai xe " + driver.getName() + " da nhan cuoc",
+                Map.of("tripId", booking.getTripId(), "driver", driver, "paymentStatus", booking.getPaymentStatus()));
 
         return toResponse(booking);
     }
@@ -183,6 +194,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public BookingResponse rejectBooking(Long bookingId, DriverActionRequest request, Long userId, String roles) {
         requireRole(roles, "DRIVER");
+        resolveDriverId(request, userId);
         Booking booking = findBookingById(bookingId);
         findDriverAndNotify(booking);
         return toResponse(booking);
@@ -192,11 +204,12 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public BookingResponse startBooking(Long bookingId, DriverActionRequest request, Long userId, String roles) {
         requireRole(roles, "DRIVER");
+        resolveDriverId(request, userId);
         Booking booking = findBookingById(bookingId);
         TripStatusUpdateEvent event = TripStatusUpdateEvent.builder()
-            .tripId(booking.getTripId())
-            .status("STARTED")
-            .build();
+                .tripId(booking.getTripId())
+                .status("STARTED")
+                .build();
         outboxService.saveEvent(booking.getId().toString(), "BOOKING", "trip-started-topic", event);
         return toResponse(booking);
     }
@@ -205,11 +218,12 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public BookingResponse completeBooking(Long bookingId, DriverActionRequest request, Long userId, String roles) {
         requireRole(roles, "DRIVER");
+        resolveDriverId(request, userId);
         Booking booking = findBookingById(bookingId);
         TripStatusUpdateEvent event = TripStatusUpdateEvent.builder()
-            .tripId(booking.getTripId())
-            .status("COMPLETED")
-            .build();
+                .tripId(booking.getTripId())
+                .status("COMPLETED")
+                .build();
         outboxService.saveEvent(booking.getId().toString(), "BOOKING", "trip-completed-topic", event);
         booking.setUpdatedAt(LocalDateTime.now());
         bookingRepository.save(booking);
@@ -223,15 +237,16 @@ public class BookingServiceImpl implements BookingService {
         if (!Objects.equals(booking.getCustomerId(), userId)) {
             throw new IllegalArgumentException("Only booking owner can cancel");
         }
-        if (booking.getStatus() == BookingStatus.ACCEPTED || booking.getStatus() == BookingStatus.STARTED || booking.getStatus() == BookingStatus.COMPLETED) {
+        if (booking.getStatus() == BookingStatus.ACCEPTED || booking.getStatus() == BookingStatus.STARTED
+                || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new IllegalStateException("Cannot cancel after driver accepted");
         }
 
         TripStatusUpdateEvent event = TripStatusUpdateEvent.builder()
-            .tripId(booking.getTripId())
-            .status("CANCELLED")
-            .cancelReason(request.getCancelReason())
-            .build();
+                .tripId(booking.getTripId())
+                .status("CANCELLED")
+                .cancelReason(request.getCancelReason())
+                .build();
         outboxService.saveEvent(booking.getId().toString(), "BOOKING", "trip-cancelled-topic", event);
 
         booking.setStatus(BookingStatus.CANCELLED);
@@ -308,13 +323,12 @@ public class BookingServiceImpl implements BookingService {
 
     private void findDriverAndNotify(Booking booking) {
         String url = String.format(
-            "%s/api/v1/location/nearby?requestId=%d&radiusKm=5&lng=%s&lat=%s&vehicleTypeId=%d",
-            locationServiceUrl,
-            booking.getId(),
-            booking.getPickUpLongitude(),
-            booking.getPickUpLatitude(),
-            booking.getVehicleTypeId()
-        );
+                "%s/api/v1/location/nearby?requestId=%d&radiusKm=5&lng=%s&lat=%s&vehicleTypeId=%d",
+                locationServiceUrl,
+                booking.getId(),
+                booking.getPickUpLongitude(),
+                booking.getPickUpLatitude(),
+                booking.getVehicleTypeId());
         ResponseEntity<NearbyDriverResponse> res = restTemplate.getForEntity(url, NearbyDriverResponse.class);
         NearbyDriverResponse driver = res.getBody();
         if (driver == null || driver.getDriverId() == null) {
@@ -322,51 +336,49 @@ public class BookingServiceImpl implements BookingService {
         }
 
         sendNotification(
-            driver.getDriverId().toString(),
-            "Co cuoc moi",
-            "Ban co mot cuoc xe moi",
-            Map.of(
-                "tripId", booking.getTripId(),
-                "customerId", booking.getCustomerId(),
-                "paymentStatus", booking.getPaymentStatus(),
-                "price", booking.getPrice()
-            )
-        );
+                driver.getDriverId().toString(),
+                "Co cuoc moi",
+                "Ban co mot cuoc xe moi",
+                Map.of(
+                        "tripId", booking.getTripId(),
+                        "customerId", booking.getCustomerId(),
+                        "paymentStatus", booking.getPaymentStatus(),
+                        "price", booking.getPrice()));
     }
 
     private void publishPaymentSuccessEvent(Long tripId, String method) {
         TripStatusUpdateEvent event = TripStatusUpdateEvent.builder()
-            .tripId(tripId)
-            .status("PAID")
-            .cancelReason(method)
-            .build();
+                .tripId(tripId)
+                .status("PAID")
+                .cancelReason(method)
+                .build();
         outboxService.saveEvent(tripId.toString(), "BOOKING", "payment-success-topic", event);
     }
 
     private void sendNotification(String recipientId, String title, String content, Map<String, Object> data) {
         NotificationMessage message = NotificationMessage.builder()
-            .recipientId(recipientId)
-            .title(title)
-            .content(content)
-            .data(data)
-            .eventId(UUID.randomUUID().toString())
-            .build();
+                .recipientId(recipientId)
+                .title(title)
+                .content(content)
+                .data(data)
+                .eventId(UUID.randomUUID().toString())
+                .build();
         restTemplate.postForEntity(notificationServiceUrl + "/api/v1/notifications", message, String.class);
     }
 
     private BookingResponse toResponse(Booking booking) {
         return BookingResponse.builder()
-            .bookingId(booking.getId())
-            .tripId(booking.getTripId())
-            .customerId(booking.getCustomerId())
-            .driverId(booking.getDriverId())
-            .vehicleTypeId(booking.getVehicleTypeId())
-            .status(booking.getStatus().name())
-            .paymentMethod(booking.getPaymentMethod().name())
-            .paymentStatus(booking.getPaymentStatus())
-            .checkoutUrl(booking.getPaymentCheckoutUrl())
-            .price(booking.getPrice())
-            .build();
+                .bookingId(booking.getId())
+                .tripId(booking.getTripId())
+                .customerId(booking.getCustomerId())
+                .driverId(booking.getDriverId())
+                .vehicleTypeId(booking.getVehicleTypeId())
+                .status(booking.getStatus().name())
+                .paymentMethod(booking.getPaymentMethod().name())
+                .paymentStatus(booking.getPaymentStatus())
+                .checkoutUrl(booking.getPaymentCheckoutUrl())
+                .price(booking.getPrice())
+                .build();
     }
 
     private Booking findBookingById(Long id) {
@@ -381,19 +393,23 @@ public class BookingServiceImpl implements BookingService {
         return restTemplate.getForObject(driverServiceUrl + "/api/v1/drivers/" + id, DriverResponse.class);
     }
 
+    private VehicleResponse getVehicleByOwnerId(Long ownerId) {
+        return restTemplate.getForObject(vehicleServiceUrl + "/api/v1/vehicles/by-owner/" + ownerId,
+                VehicleResponse.class);
+    }
+
     private VehicleTypeResponse getVehicleType(Long vehicleTypeId) {
         ResponseEntity<List<VehicleTypeResponse>> response = restTemplate.exchange(
-            vehicleServiceUrl + "/api/v1/vehicles/types",
-            HttpMethod.GET,
-            null,
-            new ParameterizedTypeReference<>() {
-            }
-        );
+                vehicleServiceUrl + "/api/v1/vehicles/types",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {
+                });
         List<VehicleTypeResponse> types = response.getBody() == null ? List.of() : response.getBody();
         return types.stream()
-            .filter(v -> Objects.equals(v.getId(), vehicleTypeId))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Vehicle type not found"));
+                .filter(v -> Objects.equals(v.getId(), vehicleTypeId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Vehicle type not found"));
     }
 
     private void requireRole(String roles, String role) {
@@ -412,6 +428,17 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
+    private Long resolveDriverId(DriverActionRequest request, Long userId) {
+        Long requestDriverId = request == null ? null : request.getDriverId();
+        if (userId == null && requestDriverId == null) {
+            throw new IllegalArgumentException("Missing driver id");
+        }
+        if (userId != null && requestDriverId != null && !userId.equals(requestDriverId)) {
+            throw new IllegalArgumentException("driverId must match authenticated user");
+        }
+        return userId != null ? userId : requestDriverId;
+    }
+
     private void validateCoordinate(Double lng, Double lat) {
         if (lng == null || lat == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             throw new IllegalArgumentException("Invalid coordinate");
@@ -423,13 +450,39 @@ public class BookingServiceImpl implements BookingService {
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-            + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-            * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return BigDecimal.valueOf(r * c).setScale(3, RoundingMode.HALF_UP).doubleValue();
     }
 
     private Long randomPositiveLong() {
-        return UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
+        // Keep IDs in JavaScript safe integer range for frontend compatibility.
+        long id;
+        do {
+            id = ThreadLocalRandom.current().nextLong(1L, 9_000_000_000_000_000L);
+        } while (bookingRepository.existsById(id));
+        return id;
+    }
+
+    private String waitForCheckoutUrl(Long bookingId, long timeoutMs) {
+        long start = System.currentTimeMillis();
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            Booking latest = bookingRepository.findById(bookingId).orElse(null);
+            if (latest != null && latest.getPaymentCheckoutUrl() != null && !latest.getPaymentCheckoutUrl().isBlank()) {
+                return latest.getPaymentCheckoutUrl();
+            }
+            if (latest != null && "FAILED".equalsIgnoreCase(latest.getPaymentStatus())) {
+                return null;
+            }
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
+        log.warn("Timeout waiting checkout URL for booking {}", bookingId);
+        return null;
     }
 }

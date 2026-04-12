@@ -79,40 +79,15 @@ CREATE TABLE IF NOT EXISTS inbox (
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT PRIMARY KEY,
     full_name VARCHAR(255),
-<<<<<<< HEAD
-    phone_number VARCHAR(15),
+    phone_number VARCHAR(20),
     email VARCHAR(255),
     address TEXT,
+    avatar_url VARCHAR(255),
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
 INSERT INTO users (id, full_name, phone_number, email, address, created_at, updated_at) VALUES 
-(123456789, 'Truong User', '0123456789', 'user@example.com', 'Ho Chi Minh City', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
-
--- AUTH-SERVICE DATA
-\c auth_db;
-CREATE TABLE IF NOT EXISTS roles (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(20) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS accounts (
-  id SERIAL PRIMARY KEY,
-  phone VARCHAR(20) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  role_id INT NOT NULL,
-  status VARCHAR(20),
-  CONSTRAINT fk_role FOREIGN KEY(role_id) REFERENCES roles(id)
-);
-
-INSERT INTO roles (id, name) VALUES (1, 'USER'), (2, 'DRIVER') ON CONFLICT (id) DO NOTHING;
-=======
-    phone_number VARCHAR(20),
-    avatar_url VARCHAR(255)
-);
-INSERT INTO users (id, full_name, phone_number) VALUES 
-(123456789, 'User One', '0123456789')
+(123456789, 'User One', '0123456789', 'user@example.com', 'Ho Chi Minh City', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 -- DRIVER-SERVICE DATA
@@ -140,22 +115,24 @@ CREATE TABLE IF NOT EXISTS location_log (
     timestamp TIMESTAMP
 );
 
--- AUTH-SERVICE DATA (Basic schema if needed)
+-- AUTH-SERVICE DATA
 \c auth_db;
 CREATE TABLE IF NOT EXISTS roles (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50)
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS accounts (
-    id SERIAL PRIMARY KEY,
-    phone VARCHAR(20) UNIQUE,
-    password VARCHAR(255),
-    role_id INT REFERENCES roles(id),
-    status VARCHAR(20)
+  id SERIAL PRIMARY KEY,
+  phone VARCHAR(20) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  role_id INT NOT NULL,
+  status VARCHAR(20),
+  CONSTRAINT fk_role FOREIGN KEY(role_id) REFERENCES roles(id)
 );
-INSERT INTO roles (id, name) VALUES (1, 'USER'), (2, 'DRIVER'), (3, 'ADMIN') ON CONFLICT DO NOTHING;
+
+INSERT INTO roles (id, name) VALUES (1, 'USER'), (2, 'DRIVER'), (3, 'ADMIN') ON CONFLICT (id) DO NOTHING;
 -- Password is '123456' encoded with BCrypt
->>>>>>> 36fd5f5 (Fix: Stabilization of Booking & Payment flow, Sync ID types and Optimize Gateway routing)
 INSERT INTO accounts (phone, password, role_id, status) VALUES 
 ('0123456789', '$2a$10$h.BAn5Sl7BAuSnyIptZzLut1oZf19AnE.pNp7mUXVsh8In8H4IasG', 1, 'ACTIVE'),
 ('9876543210', '$2a$10$h.BAn5Sl7BAuSnyIptZzLut1oZf19AnE.pNp7mUXVsh8In8H4IasG', 2, 'ACTIVE')

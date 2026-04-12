@@ -34,6 +34,7 @@ public class Booking {
 
     private String paymentId;
     private String paymentStatus;
+    @Column(length = 2048)
     private String paymentCheckoutUrl;
 
     private BigDecimal price;
@@ -41,4 +42,3 @@ public class Booking {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-

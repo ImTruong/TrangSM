@@ -34,6 +34,13 @@ public class VehicleServiceImpl implements VehicleService {
         return mapToVehicleResponse(vehicle);
     }
 
+    @Override
+    public VehicleResponse getVehicleByOwnerId(Long ownerId) {
+        Vehicle vehicle = vehicleRepository.findFirstByOwnerId(ownerId)
+                .orElseThrow(() -> new VehicleNotFoundException("Vehicle not found for owner id: " + ownerId));
+        return mapToVehicleResponse(vehicle);
+    }
+
     private VehicleTypeResponse mapToVehicleTypeResponse(VehicleType type) {
         return VehicleTypeResponse.builder()
                 .id(type.getId())

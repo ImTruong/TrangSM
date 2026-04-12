@@ -21,9 +21,16 @@ public class PaymentConsumer {
 
     @Transactional
     @KafkaListener(topics = "create-payment-topic", groupId = "payment-service-group")
-    public void consumePaymentRequest(PaymentRequestEvent event) {
+    public void consumePaymentRequest(String payload) {
+        PaymentRequestEvent event;
+        try {
+            event = objectMapper.readValue(payload, PaymentRequestEvent.class);
+        } catch (Exception ex) {
+            log.error("Invalid payment request payload: {}", payload, ex);
+            return;
+        }
         log.info("Received payment request event: {}", event.getEventId());
-        
+
         if (inboxService.isProcessed(event.getEventId())) {
             log.info("Event {} already processed, skipping", event.getEventId());
             return;
@@ -39,7 +46,14 @@ public class PaymentConsumer {
 
     @Transactional
     @KafkaListener(topics = "trip-completed-topic", groupId = "payment-service-group")
-    public void consumeTripFinished(TripFinishedEvent event) {
+    public void consumeTripFinished(String payload) {
+        TripFinishedEvent event;
+        try {
+            event = objectMapper.readValue(payload, TripFinishedEvent.class);
+        } catch (Exception ex) {
+            log.error("Invalid trip finished payload: {}", payload, ex);
+            return;
+        }
         log.info("Received trip finished event: {}", event.getEventId());
 
         if (inboxService.isProcessed(event.getEventId())) {

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrangSM - Driver</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <a class="link" href="/"><- Back</a>
+    <h1>Driver Actions</h1>
+
+    <div class="card">
+      <h3>Driver Context</h3>
+      <div class="row">
+        <label>Driver ID <input id="driverId" type="number" value="9876543210" /></label>
+        <label>User Roles <input id="driverRoles" type="text" value="DRIVER" /></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Watch Booking</h3>
+      <div class="row">
+        <label>Booking ID <input id="watchBookingId" type="text" placeholder="Paste booking id" /></label>
+        <button id="watchBtn" class="button">Watch</button>
+      </div>
+      <p class="muted">Client page auto-publishes new booking IDs to this page (same browser).</p>
+      <pre id="driverLog" class="output"></pre>
+    </div>
+
+    <div class="card">
+      <h3>Current Booking</h3>
+      <pre id="bookingState" class="output"></pre>
+      <div class="row">
+        <button id="acceptBtn" class="button button-primary">Accept</button>
+        <button id="rejectBtn" class="button">Reject</button>
+        <button id="startBtn" class="button">Start</button>
+        <button id="completeBtn" class="button">Complete</button>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/assets/driver.js"></script>
+</body>
+</html>
+

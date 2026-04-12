@@ -8,8 +8,6 @@
 2. *Microservices Patterns: With Examples in Java* — Chris Richardson
 3. *Bài tập — Phát triển phần mềm hướng dịch vụ* — Hung Dang (available in Vietnamese)
 
----
-
 ## Part 1 — Analysis Preparation
 
 ### 1.1 Business Process Definition
@@ -19,11 +17,45 @@ Describe or diagram the high-level Business Process to be automated.
 - **Domain**: Hệ thống vận chuyển hành khách
 - **Business Process**: Quy trình đặt xe và vận chuyển
 - **Actors**: Khách hàng, Tài xế
-- **Scope**: Đăng nhập và xác thực, chọn điểm đón/trả, chọn xe, ước tính tiền, chọn phương thức thanh toán, tìm tài xế gần nhất, đánh dấu trạng thái tài xế, đánh dấu trạng thái chuyến đi, thanh toán.
+- **Scope**: (Khách hàng) Đăng nhập và xác thực, chọn điểm đón/trả, chọn xe, ước tính tiền, chọn phương thức thanh toán, tìm tài xế gần nhất, đánh dấu trạng thái tài xế, đánh dấu trạng thái chuyến đi, thanh toán. (Tài xế) Đăng nhập và xác thực, nhận thông báo chuyến mới, chấp nhận hoặc từ chối chuyến, bắt đầu chuyến đi, hoàn thành chuyến đi.
 
 **Process Diagram:**
 
-![Process Diagram](asset/Process%20Diagram.png)
+```mermaid
+
+flowchart TD
+    A[Khách hàng đăng nhập] --> B[Chọn điểm đón và điểm trả]
+    B --> C[Chọn loại xe]
+    C --> D[Chọn phương thức thanh toán]
+
+    D --> E{Phương thức thanh toán}
+
+    %% Online flow
+    E -->|Online| F[Thanh toán online]
+    F --> G{Thanh toán thành công?}
+    G -->|Có| H[Hệ thống tìm tài xế]
+    G -->|Không| D
+
+    %% Cash flow
+    E -->|Tiền mặt| H
+
+    %% Driver matching
+    H --> I[Gửi thông báo đến tài xế]
+    I --> J{Tài xế nhận chuyến?}
+    J -->|Không| H
+    J -->|Có| K[Đánh dấu tài xế đang có chuyến]
+
+    %% Trip start
+    K --> L[Bắt đầu chuyến]
+
+    %% Cash payment at end
+    L --> M{Thanh toán tiền mặt?}
+    M -->|Có| N[Khách hàng thanh toán]
+
+    %% End trip
+    N --> O[Hoàn tất chuyến]
+    M -->|Không| O
+```
 
 ### 1.2 Existing Automation Systems
 
@@ -46,30 +78,49 @@ Non-functional requirements serve as input for identifying Utility Service and M
 
 ## Part 2 — REST/Microservices Modeling
 
-### 2.1 Decompose Business Process & 2.2 Filter Unsuitable Actions
+### 2.1 Event Storming — Domain Events
 
-Decompose the process from 1.1 into granular actions. Mark actions unsuitable for service encapsulation.
+List Domain Events in chronological order as they occur in the business process.
+Format: past tense (e.g., "OrderPlaced", "PaymentReceived").
 
-| #  | Action                               | Actor                   | Description                                                                 | Suitable? |
-|----|--------------------------------------|------------------------|-----------------------------------------------------------------------------|-----------|
-| 1  | Đăng nhập hệ thống                   | Khách hàng             | Xác thực danh tính, cấp JWT token                                          | ✅        |
-| 2  | Chọn điểm đón                        | Khách hàng             | Nhập/chọn địa chỉ điểm đón                                     | ✅        |
-| 3  | Chọn điểm trả                        | Khách hàng             | Nhập/chọn địa chỉ điểm trả                                     | ✅        |
-| 4  | Chọn loại xe                         | Khách hàng             | Chọn loại xe (4 chỗ, 7 chỗ...) và xem giá ước tính                         | ✅        |
-| 5  | Chọn phương thức thanh toán          | Khách hàng             | Chọn thanh toán online hoặc tiền mặt                                       | ✅        |
-| 6  | Thực hiện thanh toán online          | Hệ thống / Khách hàng  | Tạo giao dịch, gọi Payment Gateway xử lý trước chuyến                      | ✅        |
-| 7  | Xử lý thanh toán thất bại            | Hệ thống               | Thông báo thất bại, cho phép quay lại chọn phương thức                     | ✅        |
-| 8  | Tìm tài xế phù hợp                   | Hệ thống               | Truy vấn Location Service lấy danh sách tài xế online gần điểm đón         | ✅        |
-| 9  | Gửi thông báo chuyến đến tài xế      | Hệ thống               | Push notification qua WebSocket/FCM đến tài xế, chờ phản hồi              | ✅        |
-| 10 | Tài xế từ chối / timeout             | Tài xế                 | Ghi nhận từ chối, hệ thống chuyển sang tài xế tiếp theo                   | ✅        |
-| 11 | Tài xế chấp nhận chuyến              | Tài xế                 | Tài xế xác nhận nhận chuyến qua app                                       | ✅        |
-| 12 | Cập nhật trạng thái tài xế thành bận | Hệ thống               | Đánh dấu on_trip, loại khỏi pool tìm kiếm                                 | ✅        |
-| 13 | Bắt đầu chuyến đi                    | Hệ thống               | Ghi nhận thời điểm bắt đầu                     | ✅        |
-| 14 | Thông báo kết quả đến khách hàng     | Hệ thống               | Push thông tin tài xế & xe đến khách qua WebSocket/FCM                    | ✅        |
-| 15 | Thanh toán tiền mặt sau chuyến       | Khách hàng / Tài xế    | Trao đổi tiền mặt trực tiếp — không qua hệ thống                          | ❌        |
-| 16 | Hoàn tất chuyến đi                   | Hệ thống               | Cập nhật trạng thái trip = completed                                      | ✅        |
-| 17 | Cập nhật trạng thái tài xế về rảnh   | Hệ thống               | Đánh dấu available, sẵn sàng nhận chuyến mới                              | ✅        |
-> Actions marked ❌: manual-only, require human judgment, or cannot be encapsulated as a service.
+| # | Domain Event | Triggered By | Description |
+|---|-------------|--------------|-------------|
+| 1 | UserAuthenticated | Auth Service | Khách hàng hoặc tài xế đăng nhập thành công và nhận JWT. |
+| 2 | FareEstimated | Booking Task Service | Hệ thống tính khoảng cách chim bay và giá ước tính cho loại xe đã chọn. |
+| 3 | BookingCreated | Booking Task Service | Yêu cầu đặt xe hợp lệ, booking được tạo với trạng thái ban đầu. |
+| 4 | PaymentInitiated | Payment Service | Giao dịch thanh toán được tạo ở trạng thái `PENDING`. |
+| 5 | OnlinePaymentSucceeded | Payment Service | Thanh toán online thành công (chỉ với payment method ONLINE). |
+| 6 | OnlinePaymentFailed | Payment Service | Thanh toán online thất bại, booking không chuyển sang tìm tài xế. |
+| 7 | DriverSearchRequested | Booking Task Service | Booking đủ điều kiện tìm tài xế (CASH hoặc ONLINE đã thành công). |
+| 8 | DriverFound | Location Service | Tìm thấy tài xế phù hợp gần điểm đón. |
+| 9 | DriverNotified | Notification Service | Tài xế được gửi thông báo có cuốc mới. |
+| 10 | DriverAccepted | Booking Task Service | Tài xế chấp nhận cuốc, booking/trip chuyển sang trạng thái ACCEPTED. |
+| 11 | DriverRejected | Booking Task Service | Tài xế từ chối cuốc, hệ thống quay lại tìm tài xế khác. |
+| 12 | TripStarted | Booking Task Service | Tài xế bắt đầu chuyến đi. |
+| 13 | TripCompleted | Booking Task Service | Tài xế hoàn tất chuyến đi. |
+| 14 | CashPaymentCompleted | Payment Service | Thanh toán tiền mặt được đánh dấu hoàn tất sau khi trip completed. |
+| 15 | BookingCancelled | Booking Task Service | Khách hàng hủy cuốc khi còn hợp lệ hủy. |
+
+### 2.2 Commands and Actors
+
+What Commands trigger those Domain Events, and who issues them?
+
+| Command | Actor | Triggers Event(s) |
+|---------|-------|--------------------|
+| `Login` | Khách hàng / Tài xế | `UserAuthenticated` |
+| `GetEstimate` | Khách hàng | `FareEstimated` |
+| `CreateBooking` | Khách hàng | `BookingCreated`, `PaymentInitiated` |
+| `ConfirmOnlinePayment` | Payment Gateway / Payment Service | `OnlinePaymentSucceeded` hoặc `OnlinePaymentFailed` |
+| `RequestDriverSearch` | Booking Task Service | `DriverSearchRequested` |
+| `FindNearbyDriver` | Booking Task Service | `DriverFound` |
+| `SendTripNotificationToDriver` | Booking Task Service | `DriverNotified` |
+| `AcceptBooking` | Tài xế | `DriverAccepted` |
+| `RejectBooking` | Tài xế | `DriverRejected` |
+| `StartTrip` | Tài xế | `TripStarted` |
+| `CompleteTrip` | Tài xế | `TripCompleted` |
+| `CompleteCashPayment` | Booking Task Service | `CashPaymentCompleted` |
+| `CancelBooking` | Khách hàng | `BookingCancelled` |
+| `SetDriverAvailable` | Booking Task Service | `DriverBecameAvailable` |
 
 ### 2.3 Entity Service Candidates
 
@@ -108,25 +159,27 @@ Map entities/processes to REST URI Resources.
 
 ### 2.6 Associate Capabilities with Resources and Methods
 
-| Service Candidate | Capability | Resource | HTTP Method |
-| :--- | :--- | :--- | :--- |
-| **Auth Service** | Xác thực người dùng và cấp JWT Token | `/auth/login` | POST |
-| **User Service** | Lấy thông tin profile khách hàng | `/users/{id}` | GET |
-| **Driver Service** | Lấy thông tin profile tài xế | `/drivers/{id}` | GET |
-| **Driver Service** | Cập nhật trạng thái tài xế (rảnh/bận) | `/drivers/{id}/status` | PATCH |
-| **Vehicle Service** | Lấy thông tin chi tiết phương tiện | `/vehicles/{id}` | GET |
-| **Vehicle Service** | Lấy thông tin loại xe và biểu giá | `/vehicle-types` | GET |
-| **Location Service** | Tìm danh sách tài xế rảnh gần nhất | `/locations/nearby` | GET |
-| **Payment Service** | Lấy danh sách phương thức thanh toán | `/payments/methods` | GET |
-| **Payment Service** | Khởi tạo giao dịch thanh toán (Pending) | `/payments` | POST |
-| **Trip Service** | Tạo bản ghi chuyến đi mới | `/trips` | POST |
-| **Trip Service** | Cập nhật trạng thái & thời gian chuyến đi | `/trips/{id}` | PATCH |
-| **Notification Service**| Gửi thông báo (Push Notification) đến thiết bị | `/notifications` | POST |
-| **Booking Task Service**| Ước tính giá tiền dựa trên tọa độ và loại xe | `/bookings/estimate` | GET |
-| **Booking Task Service**| Nhận yêu cầu đặt xe| `/bookings` | POST |
-| **Booking Task Service**| Xử lý logic vòng đời: Tài xế nhận chuyến | `/bookings/{id}/accept` | POST |
-| **Booking Task Service**| Xử lý logic vòng đời: Bắt đầu chuyến đi | `/bookings/{id}/start` | POST |
-| **Booking Task Service**| Xử lý logic vòng đời: Hoàn thành chuyến đi | `/bookings/{id}/complete` | POST |
+| Service Candidate | Capability                                     | Resource                  | HTTP Method |
+| :--- |:-----------------------------------------------|:--------------------------|:------------|
+| **Auth Service** | Xác thực người dùng và cấp JWT Token           | `/auth/login`             | POST        |
+| **User Service** | Lấy thông tin profile khách hàng               | `/users/{id}`             | GET         |
+| **Driver Service** | Lấy thông tin profile tài xế                   | `/drivers/{id}`           | GET         |
+| **Vehicle Service** | Lấy thông tin chi tiết phương tiện             | `/vehicles/{id}`          | GET         |
+| **Vehicle Service** | Lấy thông tin loại xe và biểu giá              | `/vehicle-types`          | GET         |
+| **Location Service** | Tìm danh sách tài xế rảnh gần nhất             | `/locations/nearby`       | GET         |
+| **Location Service** | Đánh dấu tài xế bận                            | `/locations`              | PATCH       |
+| **Payment Service** | Lấy danh sách phương thức thanh toán           | `/payments/methods`       | GET         |
+| **Payment Service** | Tạo thanh toán mới                             | `/payments`               | POST        |
+| **Payment Service** | Cập nhật thanh toán                            | `/payments/{id}`          | PATCH       |
+| **Trip Service** | Tạo bản ghi chuyến đi mới                      | `/trips`                  | POST        |
+| **Trip Service** | Cập nhật trạng thái & thời gian chuyến đi      | `/trips/{id}`             | PATCH       |
+| **Trip Service** | Lấy thông tin chuyến đi                        | `/trips/{id}`             | GET         |
+| **Notification Service**| Gửi thông báo (Push Notification) đến thiết bị | `/notifications`          | POST        |
+| **Booking Task Service**| Ước tính giá tiền dựa trên tọa độ và loại xe   | `/bookings/estimate`      | GET         |
+| **Booking Task Service**| Nhận yêu cầu đặt xe                            | `/bookings`               | POST        |
+| **Booking Task Service**| Xử lý logic vòng đời: Tài xế nhận chuyến       | `/bookings/{id}/accept`   | POST        |
+| **Booking Task Service**| Xử lý logic vòng đời: Bắt đầu chuyến đi        | `/bookings/{id}/start`    | POST        |
+| **Booking Task Service**| Xử lý logic vòng đời: Hoàn thành chuyến đi     | `/bookings/{id}/complete` | POST        |
 
 ### 2.7 Utility Service & Microservice Candidates
 
@@ -136,7 +189,7 @@ Based on Non-Functional Requirements (1.3) and Processing Requirements, identify
 |----------------------|-------------------------------|-------------------------------------------------------------------------------|
 | API Gateway         | Utility Service               | Đóng vai trò Single Entry Point. Định tuyến request (Routing) và kiểm tra tính hợp lệ của JWT Token (Authorization) trước khi cho phép truy cập vào các service nghiệp vụ nội bộ. |
 | Auth Service         | Utility Service               | Chịu trách nhiệm xác thực thông tin đăng nhập, sinh (cấp phát) JWT Token. Tách riêng để giảm tải logic bảo mật cho các service nghiệp vụ. |
-| Notification Service | Utility Service               | Bọc logic gọi API của Firebase/WebSocket (Performance NFR). Có thể dùng chung cho mọi quy trình. |
+| Notification Service | Utility Service               | WebSocket (Performance NFR). Có thể dùng chung cho mọi quy trình. |
 | Location Service     | Microservice                 | Cần hiệu năng truy vấn cao (Geospatial query trên Redis) để tìm tài xế < 10s (Performance NFR). Tách riêng để dễ scale. |
 
 
@@ -224,11 +277,6 @@ sequenceDiagram
     activate Task
     
     Task->>Trip: PATCH /trips/{id} (status=ACCEPTED, driverId=...)
-    Task->>DriverEntity: PATCH /drivers/{id}/status (status=ON_TRIP)
-    
-    Note right of Task: Task gọi User Service để lấy info khách cho tài xế
-    Task->>User: GET /users/{customerId}
-    User-->>Task: Trả về tên, SĐT khách hàng, ảnh đại diện
     
     Task->>Notify: Push notification "Đã có tài xế" đến Client
     Notify-->>Client: (Nhận thông báo hiển thị xe đang đến kèm thông tin chuyến và tài xế)
@@ -274,22 +322,25 @@ Service Contract specification for each service. Full OpenAPI specs:
 > 💡 **Derive from Part 2:** Each service capability from 2.6 maps to one API endpoint. Update the OpenAPI spec files to match.
 
 **Service 1 — Auth Service:**
+
 | Endpoint | Method | Description | Request Body | Response Codes |
 |----------|--------|-------------|--------------|----------------|
 | `/auth/login` | POST | Xác thực người dùng (Client/Driver) và cấp phát JWT Token. | `{ "phone": "string", "password": "string" }` | `200 OK`, `401 Unauthorized` |
 
 **Service 2 — User Service:**
+
 | Endpoint | Method | Description | Request Body | Response Codes |
 |----------|--------|-------------|--------------|----------------|
 | `/users/{id}` | GET | Truy xuất thông tin cá nhân của khách hàng. | N/A | `200 OK`, `404 Not Found` |
 
 **Service 3 — Driver Service:**
+
 | Endpoint | Method | Description | Request Body | Response Codes |
 |----------|--------|-------------|--------------|----------------|
 | `/drivers/{id}` | GET | Truy xuất thông tin hồ sơ của tài xế. | N/A | `200 OK`, `404 Not Found` |
-| `/drivers/{id}/status` | PATCH | Cập nhật trạng thái làm việc (rảnh/bận) của tài xế. | { "status": "AVAILABLE / ON_TRIP" } | `200 OK`, `400 Bad Request` |
 
 **Service 4 — Vehicle Service:**
+
 | Endpoint | Method | Description | Request Body | Response Codes |
 |----------|--------|-------------|--------------|----------------|
 | `/vehicles/{id}` | GET | Lấy thông tin chi tiết một chiếc xe (biển số, màu sắc). | N/A | `200 OK`, `404 Not Found` |
@@ -297,97 +348,86 @@ Service Contract specification for each service. Full OpenAPI specs:
 
 **Service 5 — Location Service:**
 
-| Endpoint | Method | Description | Request Body | Response Codes |
-|----------|--------|-------------|--------------|----------------|
+| Endpoint | Method | Description | Request Body                                           | Response Codes |
+|----------|--------|-------------|--------------------------------------------------------|----------------|
 | `/locations/nearby`| GET | Tìm tài xế rảnh gần nhất dựa trên tọa độ và loại xe. | N/A (Dùng Query params: `lat`, `lng`, `vehicleTypeId`) | `200 OK`, `404 Not Found` |
-| `/locations` | POST | Cập nhật vị trí / trạng thái của tài xế | `{ "driverId": "string", "lat": number, "lng": number, "status": "string", "vehicleTypeId": "string" }` | `200 OK`, `400 Bad Request` |
+| `/locations` | POST | Cập nhật trạng thái của tài xế | `{ "driverId": "string", "status" : "string" }`         | `200 OK`, `400 Bad Request` |
 
 ---
 
 **Service 6 — Payment Service:**
 
-| Endpoint | Method | Description | Request Body | Response Codes |
-|----------|--------|-------------|--------------|----------------|
-| `/payments/methods`| GET | Lấy danh sách phương thức thanh toán hỗ trợ. | N/A | `200 OK` |
-| `/payments` | POST | Khởi tạo giao dịch thanh toán. | `{ "customerId": "string", "amount": number, "method": "string" }` | `201 Created`, `400 Bad Request` |
-| `/payments/{id}` | PATCH | Cập nhật trạng thái giao dịch (PAID/FAILED) và lưu mã giao dịch từ Payment Gateway trả về. | `{ "status": "string", "gatewayTransactionId": "string", "paidAt": "timestamp" }` | `200 OK`, `404 Not Found` |
+| Endpoint | Method | Description | Request Body                                                                            | Response Codes |
+|----------|--------|-------------|-----------------------------------------------------------------------------------------|----------------|
+| `/payments/methods`| GET | Lấy danh sách phương thức thanh toán hỗ trợ. | N/A                                                                                     | `200 OK` |
+| `/payments` | POST | Tạo mới một giao dịch thanh toán (PENDING). | `{ "customerId": "string", "amount": number, "method": "string" }` | `201 Created`, `400 Bad Request` |
+| `/payments/{id}` | PATCH | Cập nhật trạng thái giao dịch (PAID/FAILED). | `{ "status": "string", "gatewayTransactionId": "string" }`                              | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` |
 
 **Service 7 — Trip Service:**
-| Endpoint | Method | Description | Request Body | Response Codes |
-|----------|--------|-------------|--------------|----------------|
-| `/trips` | POST | Tạo mới một bản ghi chuyến đi. | `{ "paymentId": "string", "pickup_location": "{}", "dropoff_location": "{}", "price": number, "vehicleTypeId": "string" }` | `201 Created`, `400 Bad Request` |
-| `/trips/{id}` | PATCH | Cập nhật trạng thái chuyến đi. | `{ "status": "string", "driverId": "string", "accepted_at": "timestamp", "started_at": "timestamp", "completed_at": "timestamp", "cancel_at": "timestamp" }` | `200 OK`, `409 Conflict` |
+
+| Endpoint | Method | Description | Request Body                                                                                                                                                 | Response Codes |
+|----------|--------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
+| `/trips` | POST | Tạo mới một bản ghi chuyến đi. | `{ "paymentId": "string", "pickup_location": "{}", "dropoff_location": "{}", "price": number, "vehicleTypeId": "string", , "userId" : "string" }`                                 | `201 Created`, `400 Bad Request` |
+| `/trips/{id}` | PATCH | Cập nhật chuyến đi. | `{ "status": "string", "driverId": "string", "accepted_at": "timestamp", "started_at": "timestamp", "completed_at": "timestamp", "cancel_at": "timestamp" }` | `200 OK`, `409 Conflict` |
 
 **Service 8 — Notification Service:**
+
 | Endpoint | Method | Description | Request Body | Response Codes |
 |----------|--------|-------------|--------------|----------------|
 | `/notifications` | POST | Đẩy thông báo (Push notification) đến thiết bị Client/Driver. | `{ "targetId": "string", "targetType": "string", "title": "string", "body": "string", "data": {} }`| `200 OK`, `400 Bad Request` |
 
 **Service 9 — Booking Task Service (Orchestrator):**
-| Endpoint | Method | Description | Request Body | Response Codes |
-|----------|--------|-------------|--------------|----------------|
-| `/bookings/estimate` | GET | Ước tính khoảng cách chim bay và giá cho từng loại xe. | N/A (Query Params: `latA`, `lngA`, `latB`, `lngB`) | `200 OK`, `400 Bad Request` |
-| `/bookings` | POST | Khách hàng gửi yêu cầu đặt xe, khởi tạo luồng tìm kiếm. | `{ "pickup": {}, "dropoff": {}, "vehicleTypeId": "string", "paymentMethod": "string" }` | `202 Accepted`, `400 Bad Request` |
-| `/bookings/{id}/accept`| POST | Tài xế nhận cuốc, báo Notification về cho khách hàng. | `{ "driverId": "string" }` | `200 OK`, `409 Conflict` |
-| `/bookings/{id}/start` | POST | Đánh dấu bắt đầu hành trình. | `{ "driverId": "string" }` | `200 OK` |
-| `/bookings/{id}/complete`| POST| Hoàn tất hành trình và giải phóng tài xế. | `{ "driverId": "string" }` | `200 OK` |
-| `/bookings/{id}/cancel`| POST| Hủy hành trình. | `{ "cancelReason": "string" }` | `200 OK` |
+
+| Endpoint | Method | Description | Request Body                                                                            | Response Codes |
+|----------|--------|-------------|-----------------------------------------------------------------------------------------|----------------|
+| `/bookings/estimate` | GET | Ước tính khoảng cách chim bay và giá cho từng loại xe. | N/A (Query Params: `latA`, `lngA`, `latB`, `lngB`)                                      | `200 OK`, `400 Bad Request` |
+| `/bookings` | POST | Khách hàng gửi yêu cầu đặt xe, khởi tạo luồng tìm kiếm. | `{ "pickup": {}, "dropoff": {}, "vehicleTypeId": "string", "paymentMethod": "string", "userId" : "string" }` | `202 Accepted`, `400 Bad Request` |
+| `/bookings/{id}/accept`| POST | Tài xế nhận cuốc, báo Notification về cho khách hàng. | `{ "driverId": "string" }`                                                              | `200 OK`, `409 Conflict` |
+| `/bookings/{id}/start` | POST | Đánh dấu bắt đầu hành trình. | `{ "driverId": "string" }`                                                              | `200 OK` |
+| `/bookings/{id}/complete`| POST| Hoàn tất hành trình và giải phóng tài xế. | `{ "driverId": "string" }`                                                              | `200 OK` |
+| `/bookings/{id}/cancel`| POST| Hủy hành trình. | `{ "cancelReason": "string" }`                                                          | `200 OK` |
 
 ### 3.2 Service Logic Design
- 
+
 Internal processing flow for each service, based on Thomas Erl's SOA principles.
- 
+
 ---
- 
+
 #### Service 1 — Auth Service *(Utility Service)*
- 
+
 > **Principles:** *Service Abstraction* — hides all authentication logic (password hashing, JWT signing). *Service Reusability* — shared by both Customer and Driver workflows.
- 
+
 ```mermaid
 flowchart TD
-    A([POST /auth/login]) --> B{Validate Input\nphone & password?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Query User/Driver\nRepository by phone)]
-    C --> D{Account\nexists?}
-    D -->|Not found| ERR2[Return 401 Unauthorized]
-    D -->|Found| E{Verify Password\nbcrypt compare}
-    E -->|Mismatch| ERR3[Return 401 Unauthorized]
-    E -->|Match| F[Generate JWT Token\npayload: sub, role, iat, exp\nTTL: 24h]
-    F --> G([Return 200 OK\ntoken, role])
+    A([POST /auth/login]) --> B{Validate phone/password}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Check account)]
+    C --> D{Account valid?}
+    D -->|No| E2[401 Unauthorized]
+    D -->|Yes| E[Issue JWT with role claims]
+    E --> F([200 OK: accessToken, role])
 ```
- 
+
 ---
- 
+
 #### Service 2 — User Service *(Entity Service)*
- 
+
 > **Principles:** *Service Autonomy* — owns its own User data store. *Agnostic Logic* — pure CRUD on User entity, reusable across any process.
- 
+
 ```mermaid
 flowchart TD
-    A([GET /users/id]) --> B{Validate\nUUID format?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Query User\nRepository)]
-    C --> D{User\nfound?}
-    D -->|Not found| ERR2[Return 404 Not Found]
-    D -->|Found| E([Return 200 OK\nid, fullName, phone, avatarUrl])
+    A([GET /users/{id}]) --> B{Validate id}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Find user by id)]
+    C --> D{Found?}
+    D -->|No| E2[404 Not Found]
+    D -->|Yes| E([200 OK: user profile])
 ```
- 
+
 ---
- 
+
 #### Service 3 — Driver Service *(Entity Service)*
- 
-> **Principles:** *Service Loose Coupling* — Booking Task Service does not know how driver status is stored. *Agnostic Logic* — status transitions reusable across any process.
- 
-```mermaid
-flowchart TD
-    A([GET /drivers/id]) --> B{Validate\nUUID format?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Query Driver\nRepository)]
-    C --> D{Driver\nfound?}
-    D -->|Not found| ERR2[Return 404 Not Found]
-    D -->|Found| E([Return 200 OK\nid, fullName, phone, vehicleId, currentStatus])
-```
- 
+
 ```mermaid
 flowchart TD
     A([PATCH /drivers/id/status]) --> B{Validate status\n∈ AVAILABLE, ON_TRIP?}
@@ -398,215 +438,183 @@ flowchart TD
     D -->|Found| E[(Update status + updatedAt\nin DB)]
     E --> F([Return 200 OK\ndriverId, status, updatedAt])
 ```
- 
+
 ---
- 
+
 #### Service 4 — Vehicle Service *(Entity Service)*
- 
-> **Principles:** *Service Reusability* — vehicle types and pricing are agnostic data, reusable in Booking, Reporting, Admin portal, etc.
- 
+
 ```mermaid
 flowchart TD
-    A([GET /vehicles/id]) --> B{Validate\nUUID format?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Query Vehicle\nRepository)]
-    C --> D{Vehicle\nfound?}
-    D -->|Not found| ERR2[Return 404 Not Found]
-    D -->|Found| E([Return 200 OK\nid, licensePlate, color, vehicleTypeId])
+    A([GET /vehicle-types]) --> B[(Load vehicle types + price per km)]
+    B --> C([200 OK])
 ```
- 
+
 ```mermaid
 flowchart TD
-    A([GET /vehicle-types]) --> B[(Query VehicleType\nRepository\nall records)]
-    B --> C([Return 200 OK\nid, name, capacity, basePricePerKm])
+    A([GET /vehicles/{id}]) --> B{Validate id}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Find vehicle)]
+    C --> D{Found?}
+    D -->|No| E2[404 Not Found]
+    D -->|Yes| E([200 OK: vehicle detail])
 ```
- 
----
- 
+
 #### Service 5 — Location Service *(Microservice)*
- 
-> **Principles:** *Service Autonomy (highest degree)* — decomposed as a separate Microservice with its own data store (Redis Geo) to meet the Performance NFR (find driver < 10s). This is Thomas Erl's capability-driven decomposition when NFRs require independent operation and scaling.
- 
+
 ```mermaid
 flowchart TD
-    A([POST /locations]) --> B{Validate\ndriverId, lat, lng\nstatus, vehicleTypeId?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(GEOADD to Redis GeoSet\nKey: drivers:vehicleTypeId:status\nValue: driverId, lat, lng)]
-    C --> D([Return 200 OK])
+    A([POST /locations]) --> B{Validate driver/location/status}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Upsert driver location/status)]
+    C --> D([200 OK])
 ```
- 
+
 ```mermaid
 flowchart TD
-    A([GET /locations/nearby\n?lat=&lng=&vehicleTypeId=]) --> B{Validate\nlat, lng numbers\nvehicleTypeId not empty?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(GEORADIUS on Redis\nKey: drivers:vehicleTypeId:AVAILABLE\nRadius: 5km, sort ASC\nLimit: 10 results)]
-    C --> D{Results\nfound?}
-    D -->|Empty| ERR2[Return 404 Not Found]
-    D -->|Found| E([Return 200 OK\ndriverId, distanceKm\nsorted near → far])
+    A([GET /locations/nearby]) --> B{Validate lat/lng/vehicleTypeId}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Query nearest available drivers)]
+    C --> D{Any driver?}
+    D -->|No| E2[404 Not Found]
+    D -->|Yes| E([200 OK: nearest driver list])
 ```
- 
----
- 
+
 #### Service 6 — Payment Service *(Entity Service)*
- 
-> **Principles:** *Service Abstraction* — hides all Payment Gateway integration. *Agnostic Logic* — transaction lifecycle (PENDING → PAID/FAILED) is reusable logic.
- 
+
 ```mermaid
 flowchart TD
-    A([GET /payments/methods]) --> B[(Query PaymentMethod\nRepository or config)]
-    B --> C([Return 200 OK\nmethodId, name, type: ONLINE or CASH])
+    A([GET /payments/methods]) --> B[(Load supported methods)]
+    B --> C([200 OK])
 ```
- 
+
 ```mermaid
 flowchart TD
-    A([POST /payments]) --> B{Validate\ncustomerId\namount > 0, method?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Create Payment Record\nstatus = PENDING\ncreatedAt = now)]
-    C --> D([Return 201 Created\npaymentId, status: PENDING])
+    A([POST /payments]) --> B{Validate customer/amount/method}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Create payment: PENDING)]
+    C --> D{Method = ONLINE?}
+    D -->|Yes| E[Create checkout session]
+    D -->|No| F[Keep pending until trip completion]
+    E --> G([201 Created])
+    F --> G
 ```
- 
+
 ```mermaid
 flowchart TD
-    A([PATCH /payments/id]) --> B{Validate status\n∈ PAID, FAILED?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Query Payment\nRepository)]
-    C --> D{Payment\nfound?}
-    D -->|Not found| ERR2[Return 404 Not Found]
-    D -->|Found| E{Current status\n= PENDING?}
-    E -->|No| ERR3[Return 409 Conflict\nDuplicate update]
-    E -->|Yes| F[(Update: status\ngatewayTransactionId\npaidAt)]
-    F --> G([Return 200 OK\npaymentId, status, paidAt])
+    A([PATCH /payments/{id}]) --> B{Validate status update}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Find payment)]
+    C --> D{Found?}
+    D -->|No| E2[404 Not Found]
+    D -->|Yes| E[(Update payment status)]
+    E --> F([200 OK])
 ```
- 
----
- 
+
 #### Service 7 — Trip Service *(Entity Service)*
- 
-> **Principles:** *Service Autonomy* — owns the complete Trip lifecycle (PENDING → ACCEPTED → STARTED → COMPLETED). *Agnostic Logic* — state machine encapsulation reusable across any trip-related process.
- 
+
 ```mermaid
 flowchart TD
-    A([POST /trips]) --> B{Validate\npaymentId, pickup/dropoff\nvehicleTypeId?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Create Trip Record\nstatus = PENDING\ncreatedAt = now)]
-    C --> D([Return 201 Created\ntripId, status: PENDING])
+    A([POST /trips]) --> B{Validate request}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Create trip: PENDING)]
+    C --> D([201 Created])
 ```
- 
+
 ```mermaid
 flowchart TD
-    A([PATCH /trips/id]) --> B{Validate status\n∈ ACCEPTED, STARTED\nCOMPLETED, CANCELLED?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Query Trip\nRepository)]
-    C --> D{Trip\nfound?}
-    D -->|Not found| ERR2[Return 404 Not Found]
-    D -->|Found| E{State Machine\nTransition valid?\nPENDING→ACCEPTED/CANCELLED\nACCEPTED→STARTED/CANCELLED\nSTARTED→COMPLETED}
-    E -->|Invalid transition| ERR3[Return 409 Conflict]
-    E -->|Valid| F[(Apply Transition\nUpdate status +\ncorresponding timestamp)]
-    F --> G([Return 200 OK\ntripId, status, timestamps])
+    A([PATCH /trips/{id}]) --> B{Validate transition}
+    B -->|Invalid| E1[400/409]
+    B -->|Valid| C[(Find trip and apply state change)]
+    C --> D([200 OK])
 ```
- 
----
- 
+
 #### Service 8 — Notification Service *(Utility Service)*
- 
-> **Principles:** *Service Abstraction* — hides all FCM/WebSocket integration details. *Service Reusability* — any service or process can call this without knowing the push notification infrastructure.
- 
+
 ```mermaid
 flowchart TD
-    A([POST /notifications]) --> B{Validate\ntargetId, targetType\n∈ CUSTOMER, DRIVER\ntitle, body?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[(Resolve Device Token\nfrom Token Repository\nby targetId)]
-    C --> D{Token\nfound?}
-    D -->|Not found| LOG[Log warning\nfire-and-forget]
-    LOG --> OK
-    D -->|Found| E[Dispatch via\nFirebase Admin SDK\nor WebSocket Gateway\nwith data payload]
-    E --> F[(Log result to\nNotification Log)]
-    F --> OK([Return 200 OK\nnotificationId, status: SENT or FAILED])
+    A([POST /notifications]) --> B{Validate target/title/content}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[(Send notification to recipient)]
+    C --> D([200 OK])
 ```
- 
----
- 
-#### Service 9 — Booking Task Service *(Non-Agnostic / Orchestrator)*
- 
-> **Principles:** *Service Composability* — this is a **Composed Service** per Thomas Erl. It contains no agnostic logic of its own; it orchestrates Entity/Utility Services in the correct business order. All process-specific logic is centralized here, keeping agnostic services clean and reusable.
- 
-**GET /bookings/estimate** — Price Estimation
- 
+
+#### Service 9 — Booking Task Service *(Orchestrator)*
+
+> Logic dưới đây bám theo luồng nghiệp vụ chuẩn ở phần trên; triển khai thực tế có thể dùng REST + event (Kafka/outbox) nhưng không thay đổi ý nghĩa nghiệp vụ.
+
+**GET `/bookings/estimate`**
+
 ```mermaid
 flowchart TD
-    A([GET /bookings/estimate\n?latA&lngA&latB&lngB]) --> B{Validate\ncoordinates?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[Calculate Distance\nHaversine Formula\ndistanceKm = haversine_A_B]
-    C --> D[Call Vehicle Service\nGET /vehicle-types]
-    D --> E[For each vehicleType:\nestimatedPrice =\ndistanceKm × basePricePerKm]
-    E --> F([Return 200 OK\nvehicleTypeId, name\nestimatedPrice, distanceKm])
+    A([GET /bookings/estimate]) --> B{Validate coordinates + vehicleTypeId}
+    B -->|Invalid| E1[400 Bad Request]
+    B -->|Valid| C[Compute distance by Haversine]
+    C --> D[Read vehicle type price]
+    D --> E[estimatedAmount = distance * pricePerKm]
+    E --> F([200 OK: distance + estimate])
 ```
- 
-**POST /bookings** — Booking Creation Orchestration
- 
+
+**POST `/bookings`**
+
 ```mermaid
 flowchart TD
-    A([POST /bookings\npickup, dropoff\nvehicleTypeId, paymentMethod]) --> B{Validate\nInput?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[Call Payment Service\nPOST /payments\nCreate PENDING transaction]
-    C --> D[Call Trip Service\nPOST /trips\nCreate PENDING trip + paymentId]
-    D --> E[Call Location Service\nGET /locations/nearby\nFind nearest available driver]
-    E --> F{Driver\nfound?}
-    F -->|Not found| CANCEL[Call Trip Service\nPATCH /trips/id status=CANCELLED\nReturn 404]
-    F -->|Found| G[Call Notification Service\nPOST /notifications\nPush cuoc moi to driverId]
-    G --> H([Return 202 Accepted\nbookingId: tripId\nstatus: SEARCHING_DRIVER])
+    A([POST /bookings]) --> B{Validate input + CUSTOMER role}
+    B -->|Invalid| E1[400/401]
+    B -->|Valid| C[Load user + vehicle type]
+    C --> D[Create booking with status by payment method]
+    D --> E[Publish/create Trip]
+    E --> F[Publish/create Payment]
+    F --> G{ONLINE?}
+    G -->|Yes| H[Wait payment response (checkoutUrl)]
+    G -->|No| I[Move to finding-driver flow]
+    H --> J([202 Accepted])
+    I --> J
 ```
- 
-**POST /bookings/{id}/accept** — Driver Accept Orchestration
- 
+
+**POST `/bookings/{id}/accept`**
+
 ```mermaid
 flowchart TD
-    A([POST /bookings/id/accept\ndriverId]) --> B{Validate Token\nDriver role?}
-    B -->|Invalid| ERR1[Return 401 Unauthorized]
-    B -->|Valid| C[Call Trip Service\nPATCH /trips/id\nstatus=ACCEPTED, driverId, accepted_at]
-    C --> D{Trip\navailable?\n409 = already taken}
-    D -->|409 Conflict| ERR2[Return 409 Conflict\nDriver already assigned]
-    D -->|200 OK| E[Call Driver Service\nPATCH /drivers/id/status\nstatus=ON_TRIP]
-    E --> F[Call User Service\nGET /users/customerId\nFetch customer info for notification]
-    F --> G[Call Notification Service\nPOST /notifications\nPush Da co tai xe + driver info to Customer]
-    G --> H([Return 200 OK\ntripId, driverId\nstatus: ACCEPTED])
+    A([POST /bookings/{id}/accept]) --> B{Validate DRIVER role + driverId}
+    B -->|Invalid| E1[400/401]
+    B -->|Valid| C[(Load booking + driver + vehicle)]
+    C --> D[Assign driver to booking]
+    D --> E[Publish Trip ACCEPTED update]
+    E --> F[Notify customer]
+    F --> G([200 OK])
 ```
- 
-**POST /bookings/{id}/start** — Trip Start Orchestration
- 
+
+**POST `/bookings/{id}/start`**
+
 ```mermaid
 flowchart TD
-    A([POST /bookings/id/start\ndriverId]) --> B{Validate Token\nDriver role?}
-    B -->|Invalid| ERR1[Return 401 Unauthorized]
-    B -->|Valid| C[Call Trip Service\nPATCH /trips/id\nstatus=STARTED, started_at=now]
-    C --> D([Return 200 OK\ntripId, status: STARTED\nstartedAt])
+    A([POST /bookings/{id}/start]) --> B{Validate DRIVER role + driverId}
+    B -->|Invalid| E1[400/401]
+    B -->|Valid| C[Publish Trip STARTED update]
+    C --> D([200 OK])
 ```
- 
-**POST /bookings/{id}/complete** — Trip Complete Orchestration
- 
+
+**POST `/bookings/{id}/complete`**
+
 ```mermaid
 flowchart TD
-    A([POST /bookings/id/complete\ndriverId]) --> B{Validate Token\nDriver role?}
-    B -->|Invalid| ERR1[Return 401 Unauthorized]
-    B -->|Valid| C[Call Trip Service\nPATCH /trips/id\nstatus=COMPLETED, completed_at=now]
-    C --> D[Call Driver Service\nPATCH /drivers/id/status\nstatus=AVAILABLE]
-    D --> E([Return 200 OK\ntripId, status: COMPLETED\ncompletedAt])
+    A([POST /bookings/{id}/complete]) --> B{Validate DRIVER role + driverId}
+    B -->|Invalid| E1[400/401]
+    B -->|Valid| C[Publish Trip COMPLETED update]
+    C --> D{Payment method = CASH?}
+    D -->|Yes| E[Publish payment completed]
+    D -->|No| F[Skip]
+    E --> G([200 OK])
+    F --> G
 ```
- 
-**POST /bookings/{id}/cancel** — Cancellation Orchestration
- 
+
+**POST `/bookings/{id}/cancel`**
+
 ```mermaid
 flowchart TD
-    A([POST /bookings/id/cancel\ncancelReason]) --> B{Validate\nInput?}
-    B -->|Invalid| ERR1[Return 400 Bad Request]
-    B -->|Valid| C[Call Trip Service\nPATCH /trips/id\nstatus=CANCELLED, cancel_at=now]
-    C --> D{driverId\nalready assigned?}
-    D -->|Yes| E[Call Driver Service\nPATCH /drivers/id/status\nstatus=AVAILABLE]
-    D -->|No| F
-    E --> F{Payment status\n= PAID?}
-    F -->|Yes| G[Call Payment Service\nPATCH /payments/id\nstatus=REFUNDED]
-    F -->|No| H
-    G --> H([Return 200 OK\ntripId, status: CANCELLED])
+    A([POST /bookings/{id}/cancel]) --> B{Validate owner + cancellable state}
+    B -->|Invalid| E1[400/403/409]
+    B -->|Valid| C[Set booking canceled]
+    C --> D[Publish Trip CANCELLED update]
+    D --> E([200 OK])
 ```
- 
----

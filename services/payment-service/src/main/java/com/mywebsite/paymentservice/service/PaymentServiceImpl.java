@@ -38,7 +38,7 @@ public class PaymentServiceImpl implements PaymentService {
         log.info("Processing payment request for trip: {}", event.getTripId());
 
         PaymentMethod method = PaymentMethod.valueOf(event.getMethod().toUpperCase());
-        
+
         Payment payment = Payment.builder()
                 .customerId(event.getCustomerId())
                 .tripId(event.getTripId())
@@ -129,6 +129,7 @@ public class PaymentServiceImpl implements PaymentService {
             if (payment.getMethod() == PaymentMethod.CASH) {
                 payment.setStatus(PaymentStatus.COMPLETED);
                 paymentRepository.save(payment);
+                publishPaymentResponse(payment, null);
                 log.info("Cash payment COMPLETED for trip: {}", tripId);
             }
         }

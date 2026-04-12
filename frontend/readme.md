@@ -2,53 +2,72 @@
 
 ## Overview
 
-This is the frontend module of the microservices system. It provides the user interface and communicates with backend services through the API Gateway.
+Simple demo frontend with **2 separate pages**:
+- `client.html`: create and track booking
+- `driver.html`: receive booking signal and perform driver actions
 
-## Tech Stack
+The UI is static HTML/CSS/JS served by Nginx on port `3000`.
 
-| Component        | Choice               |
-|------------------|----------------------|
-| Framework        | *(e.g., React, Vue, Angular, Svelte, plain HTML/JS)* |
-| Styling          | *(e.g., CSS, Tailwind, Bootstrap, Material UI)*       |
-| Package Manager  | *(e.g., npm, yarn, pnpm)*                             |
-| Build Tool       | *(e.g., Vite, Webpack, esbuild)*                      |
+## Implemented Flow
 
-## Getting Started
+### Client Page
+- Pre-filled pickup/dropoff coordinates
+- Load vehicle types
+- Load payment methods
+- Estimate fare (`GET /api/bookings/estimate`)
+- Create booking (`POST /api/bookings`)
+- Poll booking status (`GET /api/bookings/{id}`)
+- Show checkout URL when payment service returns it
 
-```bash
-# From project root
-docker compose up frontend --build
-
-# Or run locally (adapt to your stack)
-cd src/
-# npm install && npm run dev
-# yarn && yarn dev
-```
+### Driver Page
+- Watch booking ID
+- Receive new booking signal from client page (browser localStorage event)
+- Poll booking status
+- Driver actions:
+  - Accept: `POST /api/bookings/{id}/accept`
+  - Reject: `POST /api/bookings/{id}/reject`
+  - Start: `POST /api/bookings/{id}/start`
+  - Complete: `POST /api/bookings/{id}/complete`
 
 ## Project Structure
 
-```
+```text
 frontend/
 ├── Dockerfile
+├── nginx.conf
 ├── readme.md
-└── src/           # Your source code goes here
+└── src/
+    ├── index.html
+    ├── client.html
+    ├── driver.html
+    └── assets/
+        ├── styles.css
+        ├── client.js
+        └── driver.js
 ```
 
-## Environment Variables
+## API Proxy Mapping
 
-| Variable       | Description                | Default                  |
-|----------------|----------------------------|--------------------------|
-| `API_BASE_URL` | URL of the API Gateway     | `http://localhost:8080`  |
+Nginx proxies frontend calls to internal Docker services:
+- `/api/bookings/*` -> `booking-service` (`/api/v1/bookings/*`)
+- `/api/vehicles/types` -> `vehicle-service` (`/api/v1/vehicles/types`)
+- `/api/payment/methods` -> `payment-service` (`/api/v1/payment/methods`)
 
-## Build for Production
+## Run (Docker)
 
 ```bash
-# Example:
-# npm run build
-# yarn build
+cd /Users/truong/year4semester2/SOA/TrangSM
+
+docker compose up -d --build frontend booking-service vehicle-service payment-service
 ```
+
+Open:
+- `http://localhost:3000/`
+- `http://localhost:3000/client.html`
+- `http://localhost:3000/driver.html`
 
 ## Notes
 
-- All API calls should go through the **API Gateway** (`gateway`), not directly to individual services.
-- Configure proxy or API base URL to point to the gateway.
+- This demo UI is intentionally simple.
+- Driver notification in this UI is browser-local (for demo), while backend notification service remains available in the system.
+- If `frontend` service is still commented in `docker-compose.yml`, uncomment/add it before running.

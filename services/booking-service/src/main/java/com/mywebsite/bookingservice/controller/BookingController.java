@@ -96,4 +96,3 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.cancelBooking(id, request, userId, roles));
     }
 }
-

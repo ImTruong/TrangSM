@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrangSM - Client</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <a class="link" href="/"><- Back</a>
+    <h1>Client Booking</h1>
+
+    <div class="card">
+      <h3>User Context</h3>
+      <div class="row">
+        <label>User ID <input id="userId" type="number" value="123456789" /></label>
+        <label>Roles <input id="userRoles" type="text" value="CUSTOMER" /></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Trip Info</h3>
+      <p class="muted">Pre-filled pickup/dropoff for quick demo.</p>
+      <div class="row">
+        <label>Pickup Longitude <input id="pickUpLongitude" type="number" step="0.000001" value="106.700981" /></label>
+        <label>Pickup Latitude <input id="pickUpLatitude" type="number" step="0.000001" value="10.776889" /></label>
+      </div>
+      <div class="row">
+        <label>Dropoff Longitude <input id="dropOffLongitude" type="number" step="0.000001" value="106.682171" /></label>
+        <label>Dropoff Latitude <input id="dropOffLatitude" type="number" step="0.000001" value="10.762622" /></label>
+      </div>
+      <div class="row">
+        <label>Vehicle Type
+          <select id="vehicleType"></select>
+        </label>
+        <label>Payment Method
+          <select id="paymentMethod"></select>
+        </label>
+      </div>
+      <div class="row">
+        <button id="estimateBtn" class="button">Estimate</button>
+        <button id="createBtn" class="button button-primary">Place Booking</button>
+      </div>
+      <pre id="estimateBox" class="output"></pre>
+    </div>
+
+    <div class="card">
+      <h3>Booking Result</h3>
+      <pre id="createBox" class="output"></pre>
+      <div id="checkoutWrap" class="hidden">
+        <a id="checkoutLink" class="button button-primary" target="_blank" rel="noreferrer">Open Checkout</a>
+      </div>
+      <pre id="bookingBox" class="output"></pre>
+    </div>
+  </main>
+
+  <script type="module" src="/assets/client.js"></script>
+</body>
+</html>
+

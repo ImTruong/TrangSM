@@ -24,8 +24,8 @@ public class VehicleController {
         return ResponseEntity.ok(vehicleService.getAllVehicleTypes());
     }
 
-    @GetMapping("/vehicles/{id}")
-    public ResponseEntity<VehicleResponse> getVehicleById(@PathVariable Long id) {
-        return ResponseEntity.ok(vehicleService.getVehicleById(id));
+    @GetMapping("/vehicles/by-owner/{ownerId}")
+    public ResponseEntity<VehicleResponse> getVehicleByOwnerId(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(vehicleService.getVehicleByOwnerId(ownerId));
     }
 }

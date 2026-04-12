@@ -12,7 +12,14 @@ spring:
           filters:
             - RewritePath=/api/auth(?<segment>.*), /api/v1/auth$\{segment}
 
-        - id: booking-service
+        - id: booking-service-v1
+          uri: http://booking-service:5000
+          predicates:
+            - Path=/api/v1/bookings, /api/v1/bookings/**
+          filters:
+            - RewritePath=/api/v1/bookings(?<segment>.*), /api/v1/bookings$\{segment}
+
+        - id: booking-service-legacy
           uri: http://booking-service:5000
           predicates:
             - Path=/api/bookings, /api/bookings/**
