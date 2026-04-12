@@ -85,6 +85,15 @@ services:
     networks:
       - trang-sm
 
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "8180:5000"
+    env_file:
+      - .env
+    networks:
+      - trang-sm
+
   # ─── Shared Infrastructure (uncomment as needed) ─
   db:
     image: postgres:16-alpine    # or mysql:8, mongo:7, etc.
@@ -148,6 +157,28 @@ services:
     environment:
       - KAFKA_CLUSTERS_0_NAME=local-cluster
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-server:29092
+    networks:
+      - trang-sm
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: keycloak-server
+    command:
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./realm-export.json:/opt/keycloak/data/import/realm.json:ro
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-db:5432/keycloak_db
+      KC_DB_USERNAME: ${DB_USER:-postgres}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-root}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "8003:8080"
     networks:
       - trang-sm
 

@@ -1,4 +1,4 @@
-package com.mywebsite.userservice.model.entity;
+package com.mywebsite.authservice.model.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -9,19 +9,13 @@ import lombok.experimental.FieldDefaults;
 @Getter
 @Setter
 @Entity
+@Table(name = "roles")
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "users")
-public class User {
+public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(name = "full_name")
-    String fullName;
-
-    @Column(name = "phone_number")
-    String phoneNumber;
-
-    @Column(name = "avatar_url")
-    String avatarUrl;
+    @Column(name = "role_name")
+    String roleName;
 }
