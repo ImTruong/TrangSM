@@ -8,6 +8,6 @@ import lombok.*;
 @AllArgsConstructor
 public class TripFinishedEvent {
     private String eventId;
-    private String tripId;
+    private Long tripId;
     private String status; // COMPLETED
 }

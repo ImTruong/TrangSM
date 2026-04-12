@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS inbox (
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT PRIMARY KEY,
     full_name VARCHAR(255),
+<<<<<<< HEAD
     phone_number VARCHAR(15),
     email VARCHAR(255),
     address TEXT,
@@ -106,6 +107,55 @@ CREATE TABLE IF NOT EXISTS accounts (
 );
 
 INSERT INTO roles (id, name) VALUES (1, 'USER'), (2, 'DRIVER') ON CONFLICT (id) DO NOTHING;
+=======
+    phone_number VARCHAR(20),
+    avatar_url VARCHAR(255)
+);
+INSERT INTO users (id, full_name, phone_number) VALUES 
+(123456789, 'User One', '0123456789')
+ON CONFLICT (id) DO NOTHING;
+
+-- DRIVER-SERVICE DATA
+\c driver_db;
+CREATE TABLE IF NOT EXISTS drivers (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255),
+    phone VARCHAR(20),
+    avatar_url VARCHAR(255),
+    license_number VARCHAR(50),
+    status VARCHAR(20)
+);
+INSERT INTO drivers (id, name, phone, status) VALUES 
+(9876543210, 'Driver One', '9876543210', 'AVAILABLE')
+ON CONFLICT (id) DO NOTHING;
+
+-- LOCATION-SERVICE DATA
+\c location_db;
+CREATE TABLE IF NOT EXISTS location_log (
+    id SERIAL PRIMARY KEY,
+    driver_id BIGINT,
+    lat DECIMAL(10, 8),
+    lng DECIMAL(11, 8),
+    vehicle_type_id BIGINT,
+    timestamp TIMESTAMP
+);
+
+-- AUTH-SERVICE DATA (Basic schema if needed)
+\c auth_db;
+CREATE TABLE IF NOT EXISTS roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50)
+);
+CREATE TABLE IF NOT EXISTS accounts (
+    id SERIAL PRIMARY KEY,
+    phone VARCHAR(20) UNIQUE,
+    password VARCHAR(255),
+    role_id INT REFERENCES roles(id),
+    status VARCHAR(20)
+);
+INSERT INTO roles (id, name) VALUES (1, 'USER'), (2, 'DRIVER'), (3, 'ADMIN') ON CONFLICT DO NOTHING;
+-- Password is '123456' encoded with BCrypt
+>>>>>>> 36fd5f5 (Fix: Stabilization of Booking & Payment flow, Sync ID types and Optimize Gateway routing)
 INSERT INTO accounts (phone, password, role_id, status) VALUES 
 ('0123456789', '$2a$10$h.BAn5Sl7BAuSnyIptZzLut1oZf19AnE.pNp7mUXVsh8In8H4IasG', 1, 'ACTIVE'),
 ('9876543210', '$2a$10$h.BAn5Sl7BAuSnyIptZzLut1oZf19AnE.pNp7mUXVsh8In8H4IasG', 2, 'ACTIVE')

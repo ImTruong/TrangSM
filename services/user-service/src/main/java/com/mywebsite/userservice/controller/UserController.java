@@ -20,7 +20,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserInfoById(
-        @PathVariable long id
+        @PathVariable Long id
     ) {
         UserResponse res = userService.getUserInfoById(id);
         return new ResponseEntity<>(res, HttpStatus.OK);

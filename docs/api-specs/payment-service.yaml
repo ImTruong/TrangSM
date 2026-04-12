@@ -24,6 +24,20 @@ paths:
                     type: string
                     example: ok
 
+  /payments/methods:
+    get:
+      summary: Get supported payment methods
+      description: Trả về danh sách các phương thức thanh toán hỗ trợ.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethod'
+
   /payments/webhook:
     post:
       summary: Stripe Webhook Endpoint
@@ -49,6 +63,15 @@ paths:
 
 components:
   schemas:
+    PaymentMethod:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [CASH, ONLINE]
+        displayName:
+          type: string
+          example: CASH
     Payment:
       type: object
       properties:

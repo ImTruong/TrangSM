@@ -19,11 +19,14 @@ public class LocationController {
     @PostMapping("/update")
     public ResponseEntity<String> updateLocation(
         @RequestBody LocationRequest req,
-        @RequestHeader("X-User-Id") String userId,
+        @RequestHeader("X-User-Id") Long userId,
         @RequestHeader("X-User-Name") String phone,
         @RequestHeader("X-User-Roles") String roles
     ) {
         System.out.println("Received location update from userId=" + userId + ", phone=" + phone + ", roles=" + roles);
+        if (req.getDriverId() == null) {
+            req.setDriverId(userId);
+        }
         locationService.updateLocation(req);
         return new ResponseEntity<>("OK", HttpStatus.CREATED);
     }

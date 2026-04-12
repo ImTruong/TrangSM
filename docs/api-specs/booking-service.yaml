@@ -1,0 +1,319 @@
+openapi: 3.0.3
+info:
+  title: Booking Service API
+  description: API điều phối luồng đặt xe (orchestrator) cho TrangSM.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8081
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/v1/bookings/estimate:
+    get:
+      summary: Estimate trip price by crow-flight distance
+      parameters:
+        - in: query
+          name: pickUpLongitude
+          required: true
+          schema:
+            type: number
+            format: double
+        - in: query
+          name: pickUpLatitude
+          required: true
+          schema:
+            type: number
+            format: double
+        - in: query
+          name: dropOffLongitude
+          required: true
+          schema:
+            type: number
+            format: double
+        - in: query
+          name: dropOffLatitude
+          required: true
+          schema:
+            type: number
+            format: double
+        - in: query
+          name: vehicleTypeId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Estimated price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstimateResponse'
+
+  /api/v1/bookings:
+    post:
+      summary: Create booking request
+      parameters:
+        - in: header
+          name: X-User-Id
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: header
+          name: X-User-Roles
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBookingResponse'
+
+  /api/v1/bookings/{id}/accept:
+    post:
+      summary: Driver accepts booking
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverActionRequest'
+      responses:
+        '200':
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+
+  /api/v1/bookings/{id}/reject:
+    post:
+      summary: Driver rejects booking
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverActionRequest'
+      responses:
+        '200':
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+
+  /api/v1/bookings/{id}/start:
+    post:
+      summary: Driver starts trip
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverActionRequest'
+      responses:
+        '200':
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+
+  /api/v1/bookings/{id}/complete:
+    post:
+      summary: Driver completes trip
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverActionRequest'
+      responses:
+        '200':
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+
+  /api/v1/bookings/{id}/cancel:
+    post:
+      summary: Customer cancels booking
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelBookingRequest'
+      responses:
+        '200':
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+
+components:
+  schemas:
+    CreateBookingRequest:
+      type: object
+      required: [pickUpLongitude, pickUpLatitude, dropOffLongitude, dropOffLatitude, vehicleTypeId, paymentMethod]
+      properties:
+        pickUpLongitude:
+          type: number
+          format: double
+        pickUpLatitude:
+          type: number
+          format: double
+        dropOffLongitude:
+          type: number
+          format: double
+        dropOffLatitude:
+          type: number
+          format: double
+        vehicleTypeId:
+          type: integer
+          format: int64
+        paymentMethod:
+          type: string
+          enum: [CASH, ONLINE]
+
+    DriverActionRequest:
+      type: object
+      required: [driverId]
+      properties:
+        driverId:
+          type: integer
+          format: int64
+
+    CancelBookingRequest:
+      type: object
+      properties:
+        cancelReason:
+          type: string
+
+    EstimateResponse:
+      type: object
+      properties:
+        vehicleTypeId:
+          type: integer
+          format: int64
+        vehicleTypeName:
+          type: string
+        distanceKm:
+          type: number
+          format: double
+        pricePerKm:
+          type: number
+        estimatedAmount:
+          type: number
+
+    CreateBookingResponse:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          format: int64
+        tripId:
+          type: integer
+          format: int64
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        checkoutUrl:
+          type: string
+          nullable: true
+
+    BookingResponse:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          format: int64
+        tripId:
+          type: integer
+          format: int64
+        customerId:
+          type: integer
+          format: int64
+        driverId:
+          type: integer
+          format: int64
+          nullable: true
+        vehicleTypeId:
+          type: integer
+          format: int64
+        status:
+          type: string
+        paymentMethod:
+          type: string
+        paymentStatus:
+          type: string
+        checkoutUrl:
+          type: string
+          nullable: true
+        price:
+          type: number
+

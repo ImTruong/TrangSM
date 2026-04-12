@@ -19,7 +19,7 @@ public class VehicleController {
 
     private final VehicleService vehicleService;
 
-    @GetMapping("/vehicle-types")
+    @GetMapping("/vehicles/types")
     public ResponseEntity<List<VehicleTypeResponse>> getAllVehicleTypes() {
         return ResponseEntity.ok(vehicleService.getAllVehicleTypes());
     }

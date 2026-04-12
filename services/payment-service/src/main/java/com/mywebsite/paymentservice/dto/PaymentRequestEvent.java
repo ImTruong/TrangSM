@@ -9,8 +9,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class PaymentRequestEvent {
     private String eventId;
-    private String customerId;
-    private String tripId;
+    private Long customerId;
+    private Long tripId;
     private BigDecimal amount;
     private String currency;
     private String method; // ONLINE or CASH

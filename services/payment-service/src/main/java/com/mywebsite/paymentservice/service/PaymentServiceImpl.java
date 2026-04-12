@@ -122,7 +122,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public void finishCashTrip(String tripId) {
+    public void finishCashTrip(Long tripId) {
         Optional<Payment> paymentOpt = paymentRepository.findByTripId(tripId);
         if (paymentOpt.isPresent()) {
             Payment payment = paymentOpt.get();
@@ -138,6 +138,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public void publishPaymentFailure(PaymentRequestEvent event, String reason) {
         PaymentResponseEvent response = PaymentResponseEvent.builder()
+                .eventId(java.util.UUID.randomUUID().toString())
                 .tripId(event.getTripId())
                 .customerId(event.getCustomerId())
                 .status(PaymentStatus.FAILED.name())
@@ -146,7 +147,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
 
         outboxService.saveEvent(
-                event.getTripId(),
+                event.getTripId().toString(),
                 "Payment",
                 "payment-response-topic",
                 response
@@ -156,6 +157,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private void publishPaymentResponse(Payment payment, String checkoutUrl) {
         PaymentResponseEvent response = PaymentResponseEvent.builder()
+                .eventId(java.util.UUID.randomUUID().toString())
                 .paymentId(payment.getId().toString())
                 .tripId(payment.getTripId())
                 .customerId(payment.getCustomerId())

@@ -26,6 +26,7 @@ Payment Service là một **Entity Service** chịu trách nhiệm quản lý c�
 | Method | Endpoint                    | Description                                       |
 |--------|-----------------------------|---------------------------------------------------|
 | GET    | `/health`                   | Kiểm tra trạng thái hoạt động (JSON)              |
+| GET    | `/payments/methods`         | Lấy danh sách phương thức thanh toán hỗ trợ       |
 | POST   | `/payments/webhook`         | Tiếp nhận và xử lý Webhooks từ Stripe             |
 
 ## Kafka Consumers

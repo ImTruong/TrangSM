@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/payments")
+@RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
 public class PaymentController {
     private final PaymentService paymentService;
@@ -39,7 +39,7 @@ public class PaymentController {
             if (session != null) {
                 paymentService.handleStripeSuccess(session.getId(), session.getPaymentIntent(), payload);
             }
-        } else if ("checkout.session.async_payment_failed".equals(event.getType()) || 
+        } else if ("checkout.session.async_payment_failed".equals(event.getType()) ||
                    "checkout.session.expired".equals(event.getType())) {
             Session session = (Session) event.getDataObjectDeserializer().getObject().orElse(null);
             if (session != null) {
@@ -48,5 +48,17 @@ public class PaymentController {
         }
 
         return ResponseEntity.ok("Received");
+    }
+
+    @GetMapping("/methods")
+    public ResponseEntity<java.util.List<com.mywebsite.paymentservice.dto.PaymentMethodResponse>> getPaymentMethods() {
+        java.util.List<com.mywebsite.paymentservice.dto.PaymentMethodResponse> methods =
+            java.util.Arrays.stream(com.mywebsite.paymentservice.model.PaymentMethod.values())
+                .map(method -> com.mywebsite.paymentservice.dto.PaymentMethodResponse.builder()
+                    .code(method.name())
+                    .displayName(method.name())
+                    .build())
+                .toList();
+        return ResponseEntity.ok(methods);
     }
 }

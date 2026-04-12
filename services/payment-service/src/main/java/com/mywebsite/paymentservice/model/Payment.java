@@ -18,10 +18,10 @@ public class Payment {
     private UUID id;
 
     @Column(name = "customer_id", nullable = false)
-    private String customerId;
+    private Long customerId;
 
     @Column(name = "trip_id", nullable = false)
-    private String tripId;
+    private Long tripId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

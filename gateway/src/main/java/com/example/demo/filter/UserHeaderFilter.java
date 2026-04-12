@@ -20,21 +20,23 @@ public class UserHeaderFilter implements GlobalFilter, Ordered {
             .filter(principal -> principal instanceof JwtAuthenticationToken)
             .cast(JwtAuthenticationToken.class)
             .map(jwtToken -> {
-                // 1. Lấy User ID (sub)
-                String userId = jwtToken.getToken().getClaimAsString("sub");
-
-                // 2. Lấy Username/Số điện thoại (preferred_username)
+                // 1. Lấy Số điện thoại (preferred_username) làm ID cứu cánh
                 String username = jwtToken.getToken().getClaimAsString("preferred_username");
+                String userId = username;
+                
+                // Nếu là số điện thoại, bỏ số 0 đầu để parse sang Long dễ hơn ở các service
+                if (username != null && username.startsWith("0") && username.length() > 1) {
+                    userId = username.substring(1); // "0123456789" -> "123456789"
+                }
 
-                // 3. Lấy danh sách Roles từ realm_access.roles
+                // 2. Lấy danh sách Roles từ realm_access.roles
                 Map<String, Object> realmAccess = jwtToken.getToken().getClaimAsMap("realm_access");
                 String rolesString = "";
                 if (realmAccess != null && realmAccess.get("roles") instanceof List<?> rolesList) {
-                    // Chuyển danh sách [USER] thành chuỗi "USER"
                     rolesString = String.join(",", rolesList.stream().map(Object::toString).toList());
                 }
 
-                // 4. Inject vào Header và chuyển tiếp exchange mới
+                // 3. Inject vào Header và chuyển tiếp exchange mới
                 return exchange.mutate()
                     .request(exchange.getRequest().mutate()
                         .header("X-User-Id", userId)
